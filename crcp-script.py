@@ -267,6 +267,16 @@ mdl.rootAssembly.Set(name='NodeSet_zMin', vertices=vertices)
 vertices = mdl.rootAssembly.instances['concslab'].vertices.getByBoundingBox(zMax=model_depth, zMin=model_depth)
 mdl.rootAssembly.Set(name='NodeSet_zMax', vertices=vertices)
 
+## create the steel bar node set
+vertices = mdl.rootAssembly.instances['sbar'].vertices.getByBoundingBox(xMax=0, xMin=0)
+mdl.rootAssembly.Set(name='sbarNodeSet_xMin', vertices=vertices)
+vertices = mdl.rootAssembly.instances['sbar'].vertices.getByBoundingBox(xMax=model_width, xMin=model_width)
+mdl.rootAssembly.Set(name='sbarNodeSet_xMax', vertices=vertices)
+vertices = mdl.rootAssembly.instances['trsbar'].vertices.getByBoundingBox(zMax=0, zMin=0)
+mdl.rootAssembly.Set(name='sbarNodeSet_zMin', vertices=vertices)
+vertices = mdl.rootAssembly.instances['trsbar'].vertices.getByBoundingBox(zMax=model_depth, zMin=model_depth)
+mdl.rootAssembly.Set(name='sbarNodeSet_zMax', vertices=vertices)
+
 
 ####### Create Surface set on all six faces
 faces = mdl.rootAssembly.instances['concslab'].faces.getByBoundingBox(xMax=0, xMin=0)
@@ -284,10 +294,28 @@ mdl.rootAssembly.Set(name='SurfaceSet_zMax', faces=faces)
 
 
 # boundary Condition
+# conc
 mdl.DisplacementBC(amplitude=UNSET, createStepName='Initial',
     distributionType=UNIFORM, fieldName='', localCsys=None, name='FrontBC',
     region=mdl.rootAssembly.sets['SurfaceSet_zMin'], u1=UNSET, u2=
     UNSET, u3=SET, ur1=UNSET, ur2=UNSET, ur3=UNSET)
+# sbar
+mdl.DisplacementBC(amplitude=UNSET, createStepName='Initial',
+    distributionType=UNIFORM, fieldName='', localCsys=None, name='sbarXMinBC',
+    region=mdl.rootAssembly.sets['sbarNodeSet_xMin'], u1=SET, u2=
+    UNSET, u3=UNSET, ur1=SET, ur2=UNSET, ur3=SET)
+mdl.DisplacementBC(amplitude=UNSET, createStepName='Initial',
+    distributionType=UNIFORM, fieldName='', localCsys=None, name='sbarXMaxBC',
+    region=mdl.rootAssembly.sets['sbarNodeSet_xMax'], u1=SET, u2=
+    UNSET, u3=UNSET, ur1=SET, ur2=UNSET, ur3=SET)
+mdl.DisplacementBC(amplitude=UNSET, createStepName='Initial',
+    distributionType=UNIFORM, fieldName='', localCsys=None, name='trsbarZMinBC',
+    region=mdl.rootAssembly.sets['sbarNodeSet_zMin'], u1=UNSET, u2=
+    UNSET, u3=SET, ur1=SET, ur2=UNSET, ur3=SET)
+mdl.DisplacementBC(amplitude=UNSET, createStepName='Initial',
+    distributionType=UNIFORM, fieldName='', localCsys=None, name='trsbarZMaxBC',
+    region=mdl.rootAssembly.sets['sbarNodeSet_zMax'], u1=UNSET, u2=
+    UNSET, u3=SET, ur1=SET, ur2=UNSET, ur3=SET)
 
 
 #### Creating Wheel
