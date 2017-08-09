@@ -248,11 +248,14 @@ for v in vertices:
 
 ########## Defining node sets
 #### make each surfacec in y axis as node set
+lvl = model_height
 j = 0
-for i in reversed(range(0, model_height, partition_size)):
-    vertices = mdl.rootAssembly.instances['concslab'].vertices.getByBoundingBox(yMax=i, yMin=i)
-    mdl.rootAssembly.Set(name='SurfaceSet'+str(j), vertices=a)
+while lvl >= 0:
+    vertices = mdl.rootAssembly.instances['concslab'].vertices.getByBoundingBox(yMax=lvl, yMin=lvl)
+    mdl.rootAssembly.Set(name='SurfaceSet'+str(j), vertices=vertices)
     j += 1
+    lvl -= partition_size
+    lvl = round(lvl,10) # force rounding
 
 ####### Create node set
 #a = ()
