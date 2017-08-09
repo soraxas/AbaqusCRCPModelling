@@ -304,7 +304,67 @@ del mdl.sketches['__profile__']
 mdl.rootAssembly.Instance(dependent=ON, name='Wheel-1',
     part=mdl.parts['WheelPart'])
 
+# translate wheel
+mdl.rootAssembly.translate(instanceList=('Wheel-1', ), vector=(
+    323.85, 454.8, -61.9))
+mdl.rootAssembly.rotate(angle=90.0, axisDirection=(0.0, 150.0,
+    0.0), axisPoint=(323.85, 304.8, 38.1), instanceList=('Wheel-1', ))
 
+# Define contact surfaces
+mdl.rootAssembly.Surface(name='WheelSurface', side1Faces=
+    mdl.rootAssembly.instances['Wheel-1'].faces.getSequenceFromMask(
+    ('[#1 ]', ), ))
+mdl.rootAssembly.Surface(name='TopSurface', side1Faces=
+    mdl.rootAssembly.sets['SurfaceSet_yMax'].faces)
+
+# Contect properties
+mdl.ContactProperty('IntProp-1')
+mdl.interactionProperties['IntProp-1'].TangentialBehavior(
+    dependencies=0, directionality=ISOTROPIC, elasticSlipStiffness=None,
+    formulation=PENALTY, fraction=0.005, maximumElasticSlip=FRACTION,
+    pressureDependency=OFF, shearStressLimit=None, slipRateDependency=OFF,
+    table=((0.3, ), ), temperatureDependency=OFF)
+mdl.SurfaceToSurfaceContactExp(clearanceRegion=None,
+    createStepName='Initial', datumAxis=None, initialClearance=OMIT,
+    interactionProperty='IntProp-1', master=
+    mdl.rootAssembly.surfaces['TopSurface'],
+    mechanicalConstraint=KINEMATIC, name='Int-1', slave=
+    mdl.rootAssembly.surfaces['WheelSurface'], sliding=FINITE)
+mdl.parts['WheelPart'].ReferencePoint(point=
+    mdl.parts['WheelPart'].InterestingPoint(
+    mdl.parts['WheelPart'].edges[0], CENTER))
+mdl.Velocity(distributionType=MAGNITUDE, field='', name=
+    'Predefined Field-1', omega=0.0, region=Region(
+    cells=mdl.rootAssembly.instances['Wheel-1'].cells.getSequenceFromMask(
+    mask=('[#1 ]', ), ),
+    faces=mdl.rootAssembly.instances['Wheel-1'].faces.getSequenceFromMask(
+    mask=('[#7 ]', ), ),
+    edges=mdl.rootAssembly.instances['Wheel-1'].edges.getSequenceFromMask(
+    mask=('[#3 ]', ), ),
+    vertices=mdl.rootAssembly.instances['Wheel-1'].vertices.getSequenceFromMask(
+    mask=('[#3 ]', ), ), referencePoints=(
+    mdl.rootAssembly.instances['Wheel-1'].referencePoints[2], ))
+    , velocity1=0.0, velocity2=0.0, velocity3=10.0)
+mdl.DisplacementBC(amplitude=UNSET, createStepName='Initial',
+    distributionType=UNIFORM, fieldName='', localCsys=None, name='BC-2',
+    region=Region(referencePoints=(
+    mdl.rootAssembly.instances['Wheel-1'].referencePoints[2], ))
+    , u1=SET, u2=SET, u3=SET, ur1=UNSET, ur2=SET, ur3=SET)
+mdl.ExplicitDynamicsStep(massScaling=((SEMI_AUTOMATIC, MODEL,
+    AT_BEGINNING, 0.0, 5.55e-07, BELOW_MIN, 0, 0, 0.0, 0.0, 0, None), ), name=
+    'Step-1', previous='Initial', timePeriod=4.0)
+mdl.VelocityBC(amplitude=UNSET, createStepName='Step-1',
+    distributionType=UNIFORM, fieldName='', localCsys=None, name='BC-3',
+    region=Region(referencePoints=(
+    mdl.rootAssembly.instances['Wheel-1'].referencePoints[2], ))
+    , v1=UNSET, v2=UNSET, v3=UNSET, vr1=-5.0, vr2=UNSET, vr3=UNSET)
+
+
+########## SEEDING MESH ################
+
+# mdl.parts['concslabPart'].seedPart(deviationFactor=0.1,
+#     minSizeFactor=0.1, size=3.8)
+# mdl.parts['concslabPart'].generateMesh()
 
 
 mdl.rootAssembly.regenerate()
