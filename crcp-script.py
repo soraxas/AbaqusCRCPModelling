@@ -33,7 +33,7 @@ mdl.sketches['__profile__'].rectangle(point1=(0.0, 0.0),
     point2=(1524.0, 304.8))
 mdl.Part(dimensionality=THREE_D, name='concslabPart', type=
     DEFORMABLE_BODY)
-mdl.parts['concslabPart'].BaseSolidExtrude(depth=1828.8, sketch=
+mdl.parts['concslabPart'].BaseSolidExtrude(depth=1828.0, sketch=
     mdl.sketches['__profile__'])
 del mdl.sketches['__profile__']
 # Steel bar
@@ -118,7 +118,7 @@ mdl.rootAssembly.instances['trsbar'].translate(vector=(
 mdl.rootAssembly.rotate(angle=270.0, axisDirection=(0.0,
     304.8, 0.0), axisPoint=(1524.0, 0.0, 0.0), instanceList=('trsbar', ))
 mdl.rootAssembly.translate(instanceList=('trsbar', ),
-    vector=(-152.0, 152.4, -182.88))
+    vector=(-152.4, 152.4, -182.88))
 # clone by increments
 mdl.rootAssembly.LinearInstancePattern(direction1=(-1.0, 0.0,
     0.0), direction2=(0.0, 1.0, 0.0), instanceList=('trsbar', ), number1=2,
@@ -217,13 +217,11 @@ mdl.sections['Conc and base friction-interior'].setValues(
     behaviorOptions=(ConnectorElasticity(table=((59.080527, 59.080527), ),
     independentComponents=(), components=(1, 2)), ))
 
-
 mdl.ConnectorSection(name='Conc and base friction-edge',
     translationalType=CARTESIAN)
 mdl.sections['Conc and base friction-edge'].setValues(
     behaviorOptions=(ConnectorElasticity(table=((29.5402635, 29.5402635), ),
     independentComponents=(), components=(1, 2)), ))
-
 
 mdl.ConnectorSection(name='Conc and base friction-corner',
     translationalType=CARTESIAN)
@@ -238,12 +236,15 @@ mdl.sections['Conc and base friction-corner'].setValues(
 
 vertices = mdl.rootAssembly.instances['concslab'].vertices
 
-
 for v in vertices:
 	if int(v.pointOn[0][1]) == 0: # at y=0
 		mdl.rootAssembly.WirePolyLine(mergeType=IMPRINT, meshable=OFF
 			, points=((None, v), ))
 
+
+########## Defining node sets
+#### create different node sets on each layer of the concrete slan
+vertices = mdl.rootAssembly.instances['concslab'].vertices.getByBoundingBox()
 
 ####### Create node set
 #a = ()
