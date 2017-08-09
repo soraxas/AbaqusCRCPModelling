@@ -138,6 +138,7 @@ mdl.rootAssembly.features.changeKey(fromName='trsbar-lin-2-1', toName='trsbar2')
 
 
 
+
 ### Create datum plane
 for i in range(48-1):
 	mdl.parts['concslabPart'].DatumPlaneByPrincipalPlane(offset=partition_size * (i+1)
@@ -153,7 +154,6 @@ for i in range(8-1):
 for k,v in mdl.parts['concslabPart'].datums.items():
 	mdl.parts['concslabPart'].PartitionCellByDatumPlane(cells=
 		mdl.parts['concslabPart'].cells, datumPlane=v)
-mdl.rootAssembly.regenerate()
 
 
 ## Define Connector behavior
@@ -252,15 +252,59 @@ lvl = model_height
 j = 0
 while lvl >= 0:
     vertices = mdl.rootAssembly.instances['concslab'].vertices.getByBoundingBox(yMax=lvl, yMin=lvl)
-    mdl.rootAssembly.Set(name='SurfaceSet'+str(j), vertices=vertices)
+    mdl.rootAssembly.Set(name='NodeSetLvl_'+str(j), vertices=vertices)
     j += 1
     lvl -= partition_size
     lvl = round(lvl,10) # force rounding
 
-####### Create node set
-#a = ()
-#a = a + (mdl.rootAssembly.instances['concslab'].vertices[0],)
-#a = a + (mdl.rootAssembly.instances['concslab'].vertices[1],)
+## create the other four side node set
+vertices = mdl.rootAssembly.instances['concslab'].vertices.getByBoundingBox(xMax=0, xMin=0)
+mdl.rootAssembly.Set(name='NodeSet_xMin', vertices=vertices)
+vertices = mdl.rootAssembly.instances['concslab'].vertices.getByBoundingBox(xMax=model_width, xMin=model_width)
+mdl.rootAssembly.Set(name='NodeSet_xMax', vertices=vertices)
+vertices = mdl.rootAssembly.instances['concslab'].vertices.getByBoundingBox(zMax=0, zMin=0)
+mdl.rootAssembly.Set(name='NodeSet_zMin', vertices=vertices)
+vertices = mdl.rootAssembly.instances['concslab'].vertices.getByBoundingBox(zMax=model_depth, zMin=model_depth)
+mdl.rootAssembly.Set(name='NodeSet_zMax', vertices=vertices)
 
-#mdl.rootAssembly.Set(name='test', vertices=a)
-    #mdl.rootAssembly.instances['concslab'].vertices[0])
+
+####### Create Surface set on all six faces
+faces = mdl.rootAssembly.instances['concslab'].faces.getByBoundingBox(xMax=0, xMin=0)
+mdl.rootAssembly.Set(name='SurfaceSet_xMin', faces=faces)
+faces = mdl.rootAssembly.instances['concslab'].faces.getByBoundingBox(xMax=model_width, xMin=model_width)
+mdl.rootAssembly.Set(name='SurfaceSet_xMax', faces=faces)
+faces = mdl.rootAssembly.instances['concslab'].faces.getByBoundingBox(yMax=0, yMin=0)
+mdl.rootAssembly.Set(name='SurfaceSet_yMin', faces=faces)
+faces = mdl.rootAssembly.instances['concslab'].faces.getByBoundingBox(yMax=model_height, yMin=model_height)
+mdl.rootAssembly.Set(name='SurfaceSet_yMax', faces=faces)
+faces = mdl.rootAssembly.instances['concslab'].faces.getByBoundingBox(zMax=0, zMin=0)
+mdl.rootAssembly.Set(name='SurfaceSet_zMin', faces=faces)
+faces = mdl.rootAssembly.instances['concslab'].faces.getByBoundingBox(zMax=model_depth, zMin=model_depth)
+mdl.rootAssembly.Set(name='SurfaceSet_zMax', faces=faces)
+
+
+# boundary Condition
+mdl.DisplacementBC(amplitude=UNSET, createStepName='Initial',
+    distributionType=UNIFORM, fieldName='', localCsys=None, name='FrontBC',
+    region=mdl.rootAssembly.sets['SurfaceSet_zMin'], u1=UNSET, u2=
+    UNSET, u3=SET, ur1=UNSET, ur2=UNSET, ur3=UNSET)
+
+
+#### Creating Wheel
+mdl.ConstrainedSketch(name='__profile__', sheetSize=1000.0)
+mdl.sketches['__profile__'].CircleByCenterPerimeter(center=(
+    0.0, 0.0), point1=(0.0, 150.0))
+mdl.Part(dimensionality=THREE_D, name='WheelPart', type=
+    DEFORMABLE_BODY)
+mdl.parts['WheelPart'].BaseSolidExtrude(depth=100.0, sketch=
+    mdl.sketches['__profile__'])
+del mdl.sketches['__profile__']
+
+### instance of wheels
+mdl.rootAssembly.Instance(dependent=ON, name='Wheel-1',
+    part=mdl.parts['WheelPart'])
+
+
+
+
+mdl.rootAssembly.regenerate()
