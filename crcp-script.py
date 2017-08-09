@@ -13,8 +13,14 @@ from sketch import *
 from visualization import *
 from connectorBehavior import *
 
-# NAME OF MDOEL
+# MDOEL SETTINGS
 model_name = 'CRCP'
+model_width = 1524.0
+model_height = 304.8
+model_depth = 1828.0
+
+
+partition_size = 38.1
 
 # delete existing if exists
 if model_name in mdb.models.keys():
@@ -30,16 +36,16 @@ mdl = mdb.models[model_name]
 # Concrete
 mdl.ConstrainedSketch(name='__profile__', sheetSize=3000.0)
 mdl.sketches['__profile__'].rectangle(point1=(0.0, 0.0),
-    point2=(1524.0, 304.8))
+    point2=(model_width, model_height))
 mdl.Part(dimensionality=THREE_D, name='concslabPart', type=
     DEFORMABLE_BODY)
-mdl.parts['concslabPart'].BaseSolidExtrude(depth=1828.0, sketch=
+mdl.parts['concslabPart'].BaseSolidExtrude(depth=model_depth, sketch=
     mdl.sketches['__profile__'])
 del mdl.sketches['__profile__']
 # Steel bar
 mdl.ConstrainedSketch(name='__profile__', sheetSize=3000.0)
 mdl.sketches['__profile__'].Line(point1=(0.0, 0.0), point2=(
-    1524.0, 0.0))
+    model_width, 0.0))
 mdl.Part(dimensionality=THREE_D, name='steelbarPart', type=
     DEFORMABLE_BODY)
 mdl.parts['steelbarPart'].BaseWire(sketch=
@@ -48,7 +54,7 @@ del mdl.sketches['__profile__']
 # Transverse Steel bar
 mdl.ConstrainedSketch(name='__profile__', sheetSize=3000.0)
 mdl.sketches['__profile__'].Line(point1=(0.0, 0.0), point2=(
-    1828.0, 0.0))
+    model_depth, 0.0))
 mdl.Part(dimensionality=THREE_D, name='trSteelBarPart', type=
     DEFORMABLE_BODY)
 mdl.parts['trSteelBarPart'].BaseWire(sketch=
@@ -97,7 +103,7 @@ mdl.rootAssembly.translate(instanceList=('sbar', ),
 # clone by increments
 mdl.rootAssembly.LinearInstancePattern(direction1=(-1.0, 0.0,
     0.0), direction2=(0.0, 0.0, 1.0), instanceList=('sbar', ), number1=1,
-    number2=12, spacing1=1524.0, spacing2=152.4)
+    number2=12, spacing1=model_width, spacing2=152.4)
 # rename to better names
 mdl.rootAssembly.features.changeKey(fromName='sbar', toName='sbar1')
 mdl.rootAssembly.features.changeKey(fromName='sbar-lin-1-2', toName='sbar2')
@@ -116,7 +122,7 @@ mdl.rootAssembly.features.changeKey(fromName='sbar-lin-1-12', toName='sbar12')
 mdl.rootAssembly.instances['trsbar'].translate(vector=(
     1706.88, 0.0, 0.0))
 mdl.rootAssembly.rotate(angle=270.0, axisDirection=(0.0,
-    304.8, 0.0), axisPoint=(1524.0, 0.0, 0.0), instanceList=('trsbar', ))
+    model_height, 0.0), axisPoint=(model_width, 0.0, 0.0), instanceList=('trsbar', ))
 mdl.rootAssembly.translate(instanceList=('trsbar', ),
     vector=(-152.4, 152.4, -182.88))
 # clone by increments
@@ -133,15 +139,14 @@ mdl.rootAssembly.features.changeKey(fromName='trsbar-lin-2-1', toName='trsbar2')
 
 
 ### Create datum plane
-gap = 38.1
-for i in xrange(48-1):
-	mdl.parts['concslabPart'].DatumPlaneByPrincipalPlane(offset=gap * (i+1)
+for i in range(48-1):
+	mdl.parts['concslabPart'].DatumPlaneByPrincipalPlane(offset=partition_size * (i+1)
 		, principalPlane=XYPLANE)
-for i in xrange(40-1):
-	mdl.parts['concslabPart'].DatumPlaneByPrincipalPlane(offset=gap * (i+1)
+for i in range(40-1):
+	mdl.parts['concslabPart'].DatumPlaneByPrincipalPlane(offset=partition_size * (i+1)
 		, principalPlane=YZPLANE)
-for i in xrange(8-1):
-	mdl.parts['concslabPart'].DatumPlaneByPrincipalPlane(offset=gap * (i+1)
+for i in range(8-1):
+	mdl.parts['concslabPart'].DatumPlaneByPrincipalPlane(offset=partition_size * (i+1)
 		, principalPlane=XZPLANE)
 
 # ### Partition by datum plane
@@ -172,20 +177,19 @@ mdl.sections['NonLinear-BondSp edge'].setValues(
 
 ## Partioning Longitudinal and Transverse steel bar in Part
 	##Creating DatumPointBy
-gap = 38.1
 
-for i in xrange(48-1):
+for i in range(48-1):
 	mdl.parts['trSteelBarPart'].DatumPointByCoordinate(coords=(
-		gap*(i+1), 0.0, 0.0))
-for i in xrange(40-1):
+		partition_size*(i+1), 0.0, 0.0))
+for i in range(40-1):
 	mdl.parts['steelbarPart'].DatumPointByCoordinate(coords=(
-		gap*(i+1), 0.0, 0.0))
+		partition_size*(i+1), 0.0, 0.0))
 	## Partitioning the steel bar
-for i in xrange(40-1):
+for i in range(40-1):
 	mdl.parts['steelbarPart'].PartitionEdgeByPoint(edge=
     mdl.parts['steelbarPart'].edges[i], point=
     mdl.parts['steelbarPart'].datums[i+2])
-for i in xrange(48-1):
+for i in range(48-1):
 	mdl.parts['trSteelBarPart'].PartitionEdgeByPoint(edge=
     mdl.parts['trSteelBarPart'].edges[i], point=
     mdl.parts['trSteelBarPart'].datums[i+2])
@@ -243,8 +247,12 @@ for v in vertices:
 
 
 ########## Defining node sets
-#### create different node sets on each layer of the concrete slan
-vertices = mdl.rootAssembly.instances['concslab'].vertices.getByBoundingBox()
+#### make each surfacec in y axis as node set
+j = 0
+for i in reversed(range(0, model_height, partition_size)):
+    vertices = mdl.rootAssembly.instances['concslab'].vertices.getByBoundingBox(yMax=i, yMin=i)
+    mdl.rootAssembly.Set(name='SurfaceSet'+str(j), vertices=a)
+    j += 1
 
 ####### Create node set
 #a = ()
