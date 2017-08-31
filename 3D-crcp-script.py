@@ -625,9 +625,17 @@ mdl.DisplacementBC(amplitude=UNSET, createStepName='Initial',
 
 ########## SEEDING MESH ################
 
-# mdl.parts['concslabPart'].seedPart(deviationFactor=0.1,
-#     minSizeFactor=0.1, size=3.8)
-# mdl.parts['concslabPart'].generateMesh()
+mdl.parts['concslabPart'].seedPart(deviationFactor=0.1,
+    minSizeFactor=0.1, size=38.1)
+mdl.parts['concslabPart'].generateMesh()
+
+mdl.parts['steelbarPart'].seedPart(deviationFactor=0.1,
+    minSizeFactor=0.1, size=38.1)
+mdl.parts['steelbarPart'].generateMesh()
+
+mdl.parts['trSteelBarPart'].seedPart(deviationFactor=0.1,
+    minSizeFactor=0.1, size=38.1)
+mdl.parts['trSteelBarPart'].generateMesh()
 
 
 mdl.rootAssembly.regenerate()
