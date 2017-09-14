@@ -8,8 +8,19 @@ model_name = '3D_CRCP'
 model_width = 1524.0
 model_height = 304.8
 model_depth = 1828.8
-partition_size = 38.1
-mesh_size = 38.1
+
+sbar_diameter = 19.05
+trsbar_diameter = 15.875
+
+partition_size = 38.1 * 2
+mesh_size = 38.1 * 2
+# vertical_partition_size = 38.1 * 2
+vertical_partition_size = model_height
+
+TEMP_TOPSURFACE = 29.4
+TEMP_BOTSURFACE = 37.8
+
+
 
 # delete existing if exists
 if model_name in mdb.models.keys():
@@ -116,9 +127,9 @@ del mdl.sketches['__profile__']
 mdl.ConstrainedSketch(name='__profile__', sheetSize=3000.0)
 mdl.sketches['__profile__'].Line(point1=(0.0, 0.0), point2=(
     model_width, 0.0))
-mdl.Part(dimensionality=THREE_D, name='steelbarPart', type=
+mdl.Part(dimensionality=THREE_D, name='steelBarPart', type=
     DEFORMABLE_BODY)
-mdl.parts['steelbarPart'].BaseWire(sketch=
+mdl.parts['steelBarPart'].BaseWire(sketch=
     mdl.sketches['__profile__'])
 del mdl.sketches['__profile__']
 # Transverse Steel bar
@@ -168,7 +179,7 @@ mdl.rootAssembly.DatumCsysByDefault(CARTESIAN)
 mdl.rootAssembly.Instance(dependent=ON, name='concslab',
     part=mdl.parts['concslabPart'])
 mdl.rootAssembly.Instance(dependent=ON, name='sbar', part=
-    mdl.parts['steelbarPart'])
+    mdl.parts['steelBarPart'])
 mdl.rootAssembly.Instance(dependent=ON, name='trsbar',
     part=mdl.parts['trSteelBarPart'])
 # mdl.rootAssembly.Instance(dependent=ON, name='wheel-1',
@@ -214,31 +225,42 @@ mdl.rootAssembly.features.changeKey(fromName='trsbar-lin-2-1', toName='trsbar2')
 
 
 
+
 ##################################################
 ##### ASSIGN SECTIONS
 ##################################################
-mdb.models['3D_CRCP'].HomogeneousSolidSection(material='Concrete', name=
+mdl.HomogeneousSolidSection(material='Concrete', name=
     'ConcSection', thickness=None)
-mdb.models['3D_CRCP'].HomogeneousSolidSection(material='Steel', name=
-    'sbarSection', thickness=None)
-mdb.models['3D_CRCP'].HomogeneousSolidSection(material='TrSteel', name=
-    'trsbarSection', thickness=None)
-mdb.models['3D_CRCP'].parts['concslabPart'].SectionAssignment(offset=0.0,
+mdl.CircularProfile(name='sbar', r=sbar_diameter/2)
+mdl.BeamSection(consistentMassMatrix=False, integration=
+    DURING_ANALYSIS, material='Steel', name='sbarSection', poissonRatio=0.0,
+    profile='sbar', temperatureVar=LINEAR)
+mdl.CircularProfile(name='trsbar', r=trsbar_diameter/2)
+mdl.BeamSection(consistentMassMatrix=False, integration=
+    DURING_ANALYSIS, material='TrSteel', name='trsbarSection', poissonRatio=0.0,
+    profile='trsbar', temperatureVar=LINEAR)
+
+mdl.parts['concslabPart'].SectionAssignment(offset=0.0,
     offsetField='', offsetType=MIDDLE_SURFACE, region=Region(
-    cells=mdb.models['3D_CRCP'].parts['concslabPart'].cells),
+    cells=mdl.parts['concslabPart'].cells),
     sectionName='ConcSection', thicknessAssignment=
     FROM_SECTION)
-mdb.models['3D_CRCP'].parts['steelbarPart'].SectionAssignment(offset=0.0,
+mdl.parts['steelBarPart'].SectionAssignment(offset=0.0,
     offsetField='', offsetType=MIDDLE_SURFACE, region=Region(
-    cells=mdb.models['3D_CRCP'].parts['steelbarPart'].cells),
+    edges=mdl.parts['steelBarPart'].edges),
     sectionName='sbarSection', thicknessAssignment=
     FROM_SECTION)
-mdb.models['3D_CRCP'].parts['trSteelBarPart'].SectionAssignment(offset=0.0,
+mdl.parts['steelBarPart'].assignBeamSectionOrientation(
+    method=N1_COSINES, n1=(0.0, 0.0, -1.0), region=Region(
+    edges=mdl.parts['steelBarPart'].edges))
+mdl.parts['trSteelBarPart'].SectionAssignment(offset=0.0,
     offsetField='', offsetType=MIDDLE_SURFACE, region=Region(
-    cells=mdb.models['3D_CRCP'].parts['trSteelBarPart'].cells),
+    edges=mdl.parts['trSteelBarPart'].edges),
     sectionName='trsbarSection', thicknessAssignment=
     FROM_SECTION)
-
+mdl.parts['trSteelBarPart'].assignBeamSectionOrientation(
+    method=N1_COSINES, n1=(0.0, 0.0, -1.0), region=Region(
+    edges=mdl.parts['trSteelBarPart'].edges))
 
 
 
@@ -246,15 +268,15 @@ mdb.models['3D_CRCP'].parts['trSteelBarPart'].SectionAssignment(offset=0.0,
 ##### CREATE DATUM PLANE FOR PARTITIONS
 ##################################################
 print('> Creating Datum Planes')
-for i in range(48-1):
+for i in range(int(model_depth/partition_size)-1):
 	mdl.parts['concslabPart'].DatumPlaneByPrincipalPlane(offset=partition_size * (i+1)
 		, principalPlane=XYPLANE)
-for i in range(40-1):
+for i in range(int(model_width/partition_size)-1):
 	mdl.parts['concslabPart'].DatumPlaneByPrincipalPlane(offset=partition_size * (i+1)
 		, principalPlane=YZPLANE)
-# for i in range(8-1):
-# 	mdl.parts['concslabPart'].DatumPlaneByPrincipalPlane(offset=partition_size * (i+1)
-# 		, principalPlane=XZPLANE)
+for i in range(int(model_height/vertical_partition_size)-1):
+	mdl.parts['concslabPart'].DatumPlaneByPrincipalPlane(offset=vertical_partition_size * (i+1)
+		, principalPlane=XZPLANE)
 
 print('> Partitioning by datum plane')
 # ### Partition by datum plane
@@ -264,18 +286,18 @@ for k,v in mdl.parts['concslabPart'].datums.items():
 
 # print('> Partitioning Steelbars')
 # ## Partioning Longitudinal and Transverse steel bar in Part
-# for i in range(48-1):
+# for i in range(int(model_depth/partition_size)-1):
 # 	mdl.parts['trSteelBarPart'].DatumPointByCoordinate(coords=(
 # 		partition_size*(i+1), 0.0, 0.0))
-# for i in range(40-1):
-# 	mdl.parts['steelbarPart'].DatumPointByCoordinate(coords=(
+# for i in range(int(model_width/partition_size)-1):
+# 	mdl.parts['steelBarPart'].DatumPointByCoordinate(coords=(
 # 		partition_size*(i+1), 0.0, 0.0))
 # 	## Partitioning the steel bar
-# for i in range(40-1):
-# 	mdl.parts['steelbarPart'].PartitionEdgeByPoint(edge=
-#     mdl.parts['steelbarPart'].edges[i], point=
-#     mdl.parts['steelbarPart'].datums[i+2])
-# for i in range(48-1):
+# for i in range(int(model_width/partition_size)-1):
+# 	mdl.parts['steelBarPart'].PartitionEdgeByPoint(edge=
+#     mdl.parts['steelBarPart'].edges[i], point=
+#     mdl.parts['steelBarPart'].datums[i+2])
+# for i in range(int(model_depth/partition_size)-1):
 # 	mdl.parts['trSteelBarPart'].PartitionEdgeByPoint(edge=
 #     mdl.parts['trSteelBarPart'].edges[i], point=
 #     mdl.parts['trSteelBarPart'].datums[i+2])
@@ -376,26 +398,26 @@ for k,v in mdl.parts['concslabPart'].datums.items():
 ##### EMBED SBAR TO CONCRETESLAB
 ##################################################
 
-mdb.models['3D_CRCP'].rootAssembly.Set(edges=
-    mdb.models['3D_CRCP'].rootAssembly.instances['sbar1'].edges+\
-    mdb.models['3D_CRCP'].rootAssembly.instances['sbar2'].edges+\
-    mdb.models['3D_CRCP'].rootAssembly.instances['sbar3'].edges+\
-    mdb.models['3D_CRCP'].rootAssembly.instances['sbar4'].edges+\
-    mdb.models['3D_CRCP'].rootAssembly.instances['sbar5'].edges+\
-    mdb.models['3D_CRCP'].rootAssembly.instances['sbar6'].edges+\
-    mdb.models['3D_CRCP'].rootAssembly.instances['sbar7'].edges+\
-    mdb.models['3D_CRCP'].rootAssembly.instances['sbar8'].edges+\
-    mdb.models['3D_CRCP'].rootAssembly.instances['sbar9'].edges+\
-    mdb.models['3D_CRCP'].rootAssembly.instances['sbar10'].edges+\
-    mdb.models['3D_CRCP'].rootAssembly.instances['sbar11'].edges+\
-    mdb.models['3D_CRCP'].rootAssembly.instances['sbar12'].edges+\
-    mdb.models['3D_CRCP'].rootAssembly.instances['trsbar1'].edges+\
-    mdb.models['3D_CRCP'].rootAssembly.instances['trsbar2'].edges, name='steelbars-set')
-mdb.models['3D_CRCP'].rootAssembly.Set(cells=
-    mdb.models['3D_CRCP'].rootAssembly.instances['concslab'].cells, name='concslab-set')
-mdb.models['3D_CRCP'].EmbeddedRegion(absoluteTolerance=0.0, embeddedRegion=
-    mdb.models['3D_CRCP'].rootAssembly.sets['steelbars-set'], fractionalTolerance=
-    0.05, hostRegion=mdb.models['3D_CRCP'].rootAssembly.sets['concslab-set'], name=
+mdl.rootAssembly.Set(edges=
+    mdl.rootAssembly.instances['sbar1'].edges+\
+    mdl.rootAssembly.instances['sbar2'].edges+\
+    mdl.rootAssembly.instances['sbar3'].edges+\
+    mdl.rootAssembly.instances['sbar4'].edges+\
+    mdl.rootAssembly.instances['sbar5'].edges+\
+    mdl.rootAssembly.instances['sbar6'].edges+\
+    mdl.rootAssembly.instances['sbar7'].edges+\
+    mdl.rootAssembly.instances['sbar8'].edges+\
+    mdl.rootAssembly.instances['sbar9'].edges+\
+    mdl.rootAssembly.instances['sbar10'].edges+\
+    mdl.rootAssembly.instances['sbar11'].edges+\
+    mdl.rootAssembly.instances['sbar12'].edges+\
+    mdl.rootAssembly.instances['trsbar1'].edges+\
+    mdl.rootAssembly.instances['trsbar2'].edges, name='steelbars-set')
+mdl.rootAssembly.Set(cells=
+    mdl.rootAssembly.instances['concslab'].cells, name='concslab-set')
+mdl.EmbeddedRegion(absoluteTolerance=0.0, embeddedRegion=
+    mdl.rootAssembly.sets['steelbars-set'], fractionalTolerance=
+    0.05, hostRegion=mdl.rootAssembly.sets['concslab-set'], name=
     'sbar-embedded-to-concslab', toleranceMethod=BOTH, weightFactorTolerance=1e-06)
 
 
@@ -549,9 +571,10 @@ lvl = model_height
 j = 0
 while lvl >= 0:
     vertices = mdl.rootAssembly.instances['concslab'].vertices.getByBoundingBox(yMax=lvl, yMin=lvl)
-    mdl.rootAssembly.Set(name='NodeSetLvl_'+str(j), vertices=vertices)
+    faces = mdl.rootAssembly.instances['concslab'].faces.getByBoundingBox(yMax=lvl, yMin=lvl)
+    mdl.rootAssembly.Set(name='NodeSurfaceSetLvl_'+str(j), vertices=vertices, faces=faces)
     j += 1
-    lvl -= partition_size
+    lvl -= vertical_partition_size
     lvl = round(lvl,10) # force rounding
 
 
@@ -626,6 +649,117 @@ mdl.DisplacementBC(amplitude=UNSET, createStepName='Initial',
     region=mdl.rootAssembly.sets['sbarNodeSet_zMax'], u1=UNSET, u2=
     UNSET, u3=SET, ur1=SET, ur2=UNSET, ur3=SET)
 
+##################################################
+##### CREATE STEPS
+##################################################
+
+mdl.Temperature(createStepName='Initial',
+    crossSectionDistribution=CONSTANT_THROUGH_THICKNESS, distributionType=
+    UNIFORM, magnitudes=(48.9, ), name='Initial-temp', region=Region(
+    faces=mdl.rootAssembly.instances['concslab'].faces,
+    # cells=mdl.rootAssembly.instances['concslab'].cells,
+    edges=mdl.rootAssembly.instances['sbar1'].edges+\
+    mdl.rootAssembly.instances['trsbar1'].edges+\
+    mdl.rootAssembly.instances['sbar2'].edges+\
+    mdl.rootAssembly.instances['sbar3'].edges+\
+    mdl.rootAssembly.instances['sbar4'].edges+\
+    mdl.rootAssembly.instances['sbar5'].edges+\
+    mdl.rootAssembly.instances['sbar6'].edges+\
+    mdl.rootAssembly.instances['sbar7'].edges+\
+    mdl.rootAssembly.instances['sbar8'].edges+\
+    mdl.rootAssembly.instances['sbar9'].edges+\
+    mdl.rootAssembly.instances['sbar10'].edges+\
+    mdl.rootAssembly.instances['sbar11'].edges+\
+    mdl.rootAssembly.instances['sbar12'].edges+\
+    mdl.rootAssembly.instances['trsbar2'].edges,
+    vertices=mdl.rootAssembly.instances['concslab'].vertices+\
+    mdl.rootAssembly.instances['sbar1'].vertices+\
+    mdl.rootAssembly.instances['trsbar1'].vertices+\
+    mdl.rootAssembly.instances['sbar2'].vertices+\
+    mdl.rootAssembly.instances['sbar3'].vertices+\
+    mdl.rootAssembly.instances['sbar4'].vertices+\
+    mdl.rootAssembly.instances['sbar5'].vertices+\
+    mdl.rootAssembly.instances['sbar6'].vertices+\
+    mdl.rootAssembly.instances['sbar7'].vertices+\
+    mdl.rootAssembly.instances['sbar8'].vertices+\
+    mdl.rootAssembly.instances['sbar9'].vertices+\
+    mdl.rootAssembly.instances['sbar10'].vertices+\
+    mdl.rootAssembly.instances['sbar11'].vertices+\
+    mdl.rootAssembly.instances['sbar12'].vertices+\
+    mdl.rootAssembly.instances['trsbar2'].vertices))
+mdl.StaticStep(name='Step-1', previous='Initial')
+
+# expression = '{0} - (({1} - {2}) * (Y / 304.8))'.format(TEMP_BOTSURFACE, TEMP_BOTSURFACE, TEMP_TOPSURFACE)
+# csys = mdl.rootAssembly.DatumCsysByThreePoints(coordSysType=
+#     CARTESIAN, line1=(1.0, 0.0, 0.0), line2=(0.0, 1.0, 0.0), name=
+#     'TempFieldCSYS', origin=(0.0, 0.0, 0.0))
+# print(csys)
+# print(mdl.rootAssembly.datums[141])
+# mdl.analyticalFields['Temperature Gradient of concslab'].setValues(
+    # localCsys=mdl.rootAssembly.datums[154])
+
+# expression = '(({0}-{1})/{2}*Y+{1})/{0}'.format(TEMP_BOTSURFACE, TEMP_TOPSURFACE, model_height)
+# mdl.ExpressionField(description=
+#     'The temperature gradient for concslab, from top surface as ', expression=
+#     expression, localCsys=None, name='Temperature Gradient of concslab')
+# mdl.Temperature(createStepName='Step-1',
+#     crossSectionDistribution=CONSTANT_THROUGH_THICKNESS, distributionType=FIELD
+#     , field='Temperature Gradient of concslab', magnitudes=(TEMP_BOTSURFACE, ), name='Conc-gradient-field',
+#     region=Region(
+#     cells=mdl.rootAssembly.instances['concslab'].cells,
+#     faces=mdl.rootAssembly.instances['concslab'].faces,
+#     edges=mdl.rootAssembly.instances['concslab'].edges+\
+#     mdl.rootAssembly.instances['sbar1'].edges+\
+#     mdl.rootAssembly.instances['trsbar1'].edges+\
+#     mdl.rootAssembly.instances['sbar2'].edges+\
+#     mdl.rootAssembly.instances['sbar3'].edges+\
+#     mdl.rootAssembly.instances['sbar4'].edges+\
+#     mdl.rootAssembly.instances['sbar5'].edges+\
+#     mdl.rootAssembly.instances['sbar6'].edges+\
+#     mdl.rootAssembly.instances['sbar7'].edges+\
+#     mdl.rootAssembly.instances['sbar8'].edges+\
+#     mdl.rootAssembly.instances['sbar9'].edges+\
+#     mdl.rootAssembly.instances['sbar10'].edges+\
+#     mdl.rootAssembly.instances['sbar11'].edges+\
+#     mdl.rootAssembly.instances['sbar12'].edges+\
+#     mdl.rootAssembly.instances['trsbar2'].edges,
+#     vertices=mdl.rootAssembly.instances['concslab'].vertices+\
+#     mdl.rootAssembly.instances['sbar1'].vertices+\
+#     mdl.rootAssembly.instances['trsbar1'].vertices+\
+#     mdl.rootAssembly.instances['sbar2'].vertices+\
+#     mdl.rootAssembly.instances['sbar3'].vertices+\
+#     mdl.rootAssembly.instances['sbar4'].vertices+\
+#     mdl.rootAssembly.instances['sbar5'].vertices+\
+#     mdl.rootAssembly.instances['sbar6'].vertices+\
+#     mdl.rootAssembly.instances['sbar7'].vertices+\
+#     mdl.rootAssembly.instances['sbar8'].vertices+\
+#     mdl.rootAssembly.instances['sbar9'].vertices+\
+#     mdl.rootAssembly.instances['sbar10'].vertices+\
+#     mdl.rootAssembly.instances['sbar11'].vertices+\
+#     mdl.rootAssembly.instances['sbar12'].vertices+\
+#     mdl.rootAssembly.instances['trsbar2'].vertices))
+
+# mdl.Temperature(createStepName='Step-1',
+#     crossSectionDistribution=CONSTANT_THROUGH_THICKNESS, distributionType=
+#     UNIFORM, magnitudes=(TEMP_TOPSURFACE, ), name='concslab-topSutfaceTemp', region=
+#     mdl.rootAssembly.sets['SurfaceSet_yMax'])
+# mdl.Temperature(createStepName='Step-1',
+#     crossSectionDistribution=CONSTANT_THROUGH_THICKNESS, distributionType=
+#     UNIFORM, magnitudes=(TEMP_BOTSURFACE, ), name='concslab-botSutfaceTemp', region=
+#     mdl.rootAssembly.sets['SurfaceSet_yMin'])
+mdl.Temperature(createStepName='Step-1',
+    crossSectionDistribution=CONSTANT_THROUGH_THICKNESS, distributionType=
+    UNIFORM, magnitudes=(TEMP_TOPSURFACE + (TEMP_BOTSURFACE-TEMP_TOPSURFACE)/2, ), name='sbar-midTemp', region=
+    mdl.rootAssembly.sets['steelbars-set'])
+tempStep = (TEMP_BOTSURFACE - TEMP_TOPSURFACE)/int(model_height/vertical_partition_size)
+for i in range(int(model_height/vertical_partition_size) + 1):
+    mdl.Temperature(createStepName='Step-1',
+        crossSectionDistribution=CONSTANT_THROUGH_THICKNESS, distributionType=
+        UNIFORM, magnitudes=(TEMP_TOPSURFACE + i*tempStep, ), name='TempLvl_'+str(i), region=
+        mdl.rootAssembly.sets['NodeSurfaceSetLvl_'+str(i)])
+
+## reset the initial tempStep
+# mdl.predefinedFields['Initial-temp'].resetToInitial(stepName='Step-1')
 
 # # Define contact surfaces
 # mdl.rootAssembly.Surface(name='WheelSurface', side1Faces=
@@ -651,7 +785,7 @@ mdl.DisplacementBC(amplitude=UNSET, createStepName='Initial',
 #     mdl.parts['wheelPart'].InterestingPoint(
 #     mdl.parts['wheelPart'].edges[0], CENTER))
 # mdl.Velocity(distributionType=MAGNITUDE, field='', name=
-#     'Predefined Field-1', omega=0.0, region=Region(
+#     'Initial-temp', omega=0.0, region=Region(
 #     cells=mdl.rootAssembly.instances['wheel-1'].cells.getSequenceFromMask(
 #     mask=('[#1 ]', ), ),
 #     faces=mdl.rootAssembly.instances['wheel-1'].faces.getSequenceFromMask(
@@ -683,9 +817,9 @@ mdl.parts['concslabPart'].seedPart(deviationFactor=0.1,
     minSizeFactor=0.1, size=mesh_size)
 mdl.parts['concslabPart'].generateMesh()
 
-mdl.parts['steelbarPart'].seedPart(deviationFactor=0.1,
+mdl.parts['steelBarPart'].seedPart(deviationFactor=0.1,
     minSizeFactor=0.1, size=mesh_size)
-mdl.parts['steelbarPart'].generateMesh()
+mdl.parts['steelBarPart'].generateMesh()
 
 mdl.parts['trSteelBarPart'].seedPart(deviationFactor=0.1,
     minSizeFactor=0.1, size=mesh_size)
