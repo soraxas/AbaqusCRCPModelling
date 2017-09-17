@@ -83,6 +83,35 @@ def templatePlotEntireDepthMid(instanceName, height, atX):
                                      shape=UNDEFORMED,
                                      labelType=TRUE_DISTANCE)
 
+def templatePlot(instanceName, height, atX=None, atZ=None):
+    # atX and atZ should be one or the other being None, cannot be both
+    if atX == atZ or (atX and atZ):
+        raise Exception("ERROR: one and only one of the variable atX and atZ should be provided.")
+    if atX:
+        plotname = '@x='+str(atX)+'_@y='+str(height)
+        sortIdx = 2
+    else:
+        plotname = '@z='+str(atZ)+'_@y='+str(height)
+        sortIdx = 0
+
+    pathName = instanceName+plotname
+
+    expr = getNodesFromBox(instanceName, yMin=height,yMax=height, xMin=atX, xMax=atX, zMin=atZ, zMax=atZ)
+
+    # turn to list first (to sort)
+    expr = list(expr)
+    # sort it to increasing sequence
+    expr.sort(key=lambda x : x.coordinates[sortIdx])
+    # extract the index number
+    idxs = [i.label for i in expr]
+    print('> For ['+plotname+'] Found path :' + str(idxs))
+    newPath = session.Path(name=pathName,type=NODE_LIST,expression=(instanceName.upper(),tuple(idxs)))
+    ## plot XY DATA
+    newXYData=session.XYDataFromPath(name=pathName,path=newPath,
+                                     includeIntersections=FALSE,
+                                     shape=UNDEFORMED,
+                                     labelType=TRUE_DISTANCE)
+
 
 
 ## plot concslab
@@ -94,8 +123,29 @@ def templatePlotEntireDepthMid(instanceName, height, atX):
 # # bottom
 # templatePlotEntireWidth('concslab', 0)
 
+########################################
+# Plot along the width
+########################################
+# slab mid point
 for i in range(int(model_height/mesh_size) + 1):
-    templatePlotEntireWidthMid(CONCSLAB_NAME, i*mesh_size, model_depth/2)
-#
+    templatePlot(CONCSLAB_NAME, i*mesh_size, atZ=model_depth/2)
+# in line with steelbar
 for i in range(int(model_height/mesh_size) + 1):
-    templatePlotEntireDepthMid(CONCSLAB_NAME, i*mesh_size, model_width/2)
+    templatePlot(CONCSLAB_NAME, i*mesh_size, atZ=990.6)
+# in between 2 steelbar
+for i in range(int(model_height/mesh_size) + 1):
+    templatePlot(CONCSLAB_NAME, i*mesh_size, atZ=838.2 + (990.6-838.2)/2)
+
+
+########################################
+# Plot along the depth
+########################################
+# slab mid point
+for i in range(int(model_height/mesh_size) + 1):
+    templatePlot(CONCSLAB_NAME, i*mesh_size, atX=model_width/2)
+# in line with steelbar
+for i in range(int(model_height/mesh_size) + 1):
+    templatePlot(CONCSLAB_NAME, i*mesh_size, atX=457.2)
+# in between 2 steelbar
+for i in range(int(model_height/mesh_size) + 1):
+    templatePlot(CONCSLAB_NAME, i*mesh_size, atX=457.2 + (1371.6-457.2)/2)
