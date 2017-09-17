@@ -1,7 +1,7 @@
 # delete existing if exists
 if DELETE_EXISTING_MODEL and model_name in mdb.models.keys():
     del mdb.models[model_name]
-    
+
 mdb.Model(modelType=STANDARD_EXPLICIT, name=model_name)
 mdl = mdb.models[model_name]
 
@@ -121,8 +121,30 @@ mdl.sketches['__profile__'].CircleByCenterPerimeter(center=(
 mdl.Material(name='Concrete')
 mdl.materials['Concrete'].Elastic(table=((13780.0, 0.15), ))
 mdl.materials['Concrete'].Expansion(table=((1.08e-05, ), ))
-mdl.materials['Concrete'].Viscoelastic(domain=TIME, table=((
-    0.45, 0.45, 48.0), ), time=PRONY)
+# mdl.materials['Concrete'].Viscoelastic(domain=TIME, table=((
+#     0.45, 0.45, 48.0), ), time=PRONY)
+mdl.materials['Concrete'].ConcreteDamagedPlasticity(table=((
+    0.001, 24.0, 1.0, 32.0, 0.002), ))
+mdl.materials['Concrete'].concreteDamagedPlasticity.ConcreteCompressionHardening(
+    table=((12.8, 0.0), (14.4, 6.59536e-05), (16.0, 0.00013498), (17.6,
+    0.000207553), (19.2, 0.000284282), (20.8, 0.000365977), (22.4,
+    0.000453748), (24.0, 0.000549193), (25.6, 0.000654766), (27.2,
+    0.000774597), (28.8, 0.000916738), (30.4, 0.00110198), (32.0, 0.001549193),
+    (30.4, 0.001686556), (28.8, 0.001823919), (27.2, 0.001961281), (25.6,
+    0.002098644), (24.0, 0.002236007), (22.4, 0.002373369), (20.8,
+    0.002510732), (19.2, 0.002648094), (17.6, 0.002785457), (16.0, 0.00292282),
+    (14.4, 0.003060182), (12.8, 0.003197545), (11.2, 0.003334908), (9.6,
+    0.00347227), (8.0, 0.003609633), (6.4, 0.003746996), (4.8, 0.003884358), (
+    3.2, 0.004021721), (1.6, 0.004159083), (0.0, 0.004296446)))
+mdl.materials['Concrete'].concreteDamagedPlasticity.ConcreteTensionStiffening(
+    table=((3.39411255, 0.0), (3.00603442, 3.72112e-05), (2.755850108,
+    7.44224e-05), (2.570196969, 0.000112761), (2.367909957, 0.000169142), (
+    2.212216452, 0.000225522), (1.970719701, 0.000338284), (1.775816456,
+    0.000451045), (1.604209964, 0.000563806), (1.445915903, 0.000676567), (
+    1.295942111, 0.000789328), (1.151515165, 0.00090209), (1.010971011,
+    0.001014851), (0.873250705, 0.001127612), (0.737648287, 0.001240373), (
+    0.603675012, 0.001353135), (0.470981778, 0.001465896), (0.339312578,
+    0.001578657), (0.208475405, 0.001691418), (0.07832343, 0.001804179)))
 # Steel
 mdl.Material(name='Steel')
 mdl.materials['Steel'].Elastic(table=((200000.0, 0.0), ))
