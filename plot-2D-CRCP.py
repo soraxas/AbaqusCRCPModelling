@@ -61,7 +61,7 @@ def templatePlotEntireWidth(instanceName, height):
 # templatePlotEntireWidth('concslab', 0)
 
 for i in range(int(model_height/partition_size) + 1):
-    templatePlotEntireWidth(CONCSLAB_NAME, int(i*partition_size))
+    templatePlotEntireWidth(CONCSLAB_NAME, i*partition_size)
 
 
 ## plot sbar
