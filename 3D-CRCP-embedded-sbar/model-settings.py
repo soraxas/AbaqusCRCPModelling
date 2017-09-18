@@ -9,6 +9,7 @@ model_width = 1524.0
 model_height = 304.8
 model_depth = 1828.8
 
+rebar_height = model_height/2
 sbar_diameter = 19.05
 trsbar_diameter = 15.875
 

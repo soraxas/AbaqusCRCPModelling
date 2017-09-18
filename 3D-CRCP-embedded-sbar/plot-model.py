@@ -4,6 +4,8 @@ CONCSLAB_NAME = 'concslab'
 SBAR_NAME = 'sbar'
 
 def getNodesFromBox(instancename, xMin=None, xMax=None, yMin=None, yMax=None, zMin=None, zMax=None):
+    # given the options, return a tuple of the instancename and the resultant list of node index
+    MINIMUM_NUM_OF_NODE_TO_CONSIDER_AS_PATH = 2
     options = {}
     if xMin is not None:
         options['xMin'] = xMin-tolerance
@@ -17,7 +19,17 @@ def getNodesFromBox(instancename, xMin=None, xMax=None, yMin=None, yMax=None, zM
         options['zMin'] = zMin-tolerance
     if zMax is not None:
         options['zMax'] = zMax+tolerance
-    return mdl.rootAssembly.instances[instancename].nodes.getByBoundingBox(**options)
+    if instancename == SBAR_NAME:
+        # Special case andling for steel bar
+        for k in mdl.rootAssembly.instances.keys():
+            if SBAR_NAME in k: # is a steel bar
+                instance = mdl.rootAssembly.instances[k]
+                nodes = instance.nodes.getByBoundingBox(**options)
+                # print nodes
+                if len(nodes) > MINIMUM_NUM_OF_NODE_TO_CONSIDER_AS_PATH: # we got something from this instance, return the resultant nodes.
+                    return k, nodes
+    else:
+        return instancename, mdl.rootAssembly.instances[instancename].nodes.getByBoundingBox(**options)
 
 
 # a = getNodesFromBox(CONCSLAB_NAME, yMin=model_height,yMax=model_height, zMin=model_depth/2, zMax=model_depth/2)
@@ -45,9 +57,9 @@ def getNodesFromBox(instancename, xMin=None, xMax=None, yMin=None, yMax=None, zM
     #### IMPORTANT the +1 is workaround for the weird syntax where plot's id is +1 of edge index
 
 
-def templatePlotEntireWidthMid(instanceName, height, atZ):
+def templatePlotEntireWidthMid(instance, height, atZ):
+    instanceName, expr = getNodesFromBox(instance, yMin=height,yMax=height, zMin=atZ, zMax=atZ)
     pathName = instanceName+'@z='+str(model_depth/2)+' ; @y='+str(height)
-    expr = getNodesFromBox(instanceName, yMin=height,yMax=height, zMin=atZ, zMax=atZ)
 
     # turn to list first (to sort)
     expr = list(expr)
@@ -83,7 +95,7 @@ def templatePlotEntireDepthMid(instanceName, height, atX):
                                      shape=UNDEFORMED,
                                      labelType=TRUE_DISTANCE)
 
-def templatePlot(instanceName, height, atX=None, atZ=None):
+def templatePlot(instance, height, atX=None, atZ=None):
     # atX and atZ should be one or the other being None, cannot be both
     if atX == atZ or (atX and atZ):
         raise Exception("ERROR: one and only one of the variable atX and atZ should be provided.")
@@ -94,9 +106,9 @@ def templatePlot(instanceName, height, atX=None, atZ=None):
         plotname = '@z='+str(atZ)+'_@y='+str(height)
         sortIdx = 0
 
-    pathName = instanceName+plotname
+    instanceName, expr = getNodesFromBox(instance, yMin=height,yMax=height, xMin=atX, xMax=atX, zMin=atZ, zMax=atZ)
 
-    expr = getNodesFromBox(instanceName, yMin=height,yMax=height, xMin=atX, xMax=atX, zMin=atZ, zMax=atZ)
+    pathName = instanceName+plotname
 
     # turn to list first (to sort)
     expr = list(expr)
@@ -107,31 +119,33 @@ def templatePlot(instanceName, height, atX=None, atZ=None):
     print('> For ['+plotname+'] Found path :' + str(idxs))
     newPath = session.Path(name=pathName,type=NODE_LIST,expression=(instanceName.upper(),tuple(idxs)))
     ## plot XY DATA
-    newXYData=session.XYDataFromPath(name=pathName,path=newPath,
-                                     includeIntersections=FALSE,
-                                     shape=UNDEFORMED,
-                                     labelType=TRUE_DISTANCE)
+    newXYData=session.XYDataFromPath(name=pathName,path=newPath,includeIntersections=False,
+                                     projectOntoMesh=True, pathStyle=PATH_POINTS, numIntervals=10,
+                                     projectionTolerance=0, shape=UNDEFORMED, labelType=TRUE_DISTANCE)
 
-
-
+# name=pathName,path=newPath,
+#                                  includeIntersections=FALSE,
+#                                  shape=UNDEFORMED,
+#                                  labelType=TRUE_DISTANCE)
 ## plot concslab
 
 # # surface
 # templatePlotEntireWidth('concslab', model_height)
 # # rebar location
-# templatePlotEntireWidth('concslab', rebar_location)
+# templatePlotEntireWidth('concslab', rebar_height)
 # # bottom
 # templatePlotEntireWidth('concslab', 0)
 
 ########################################
 # Plot along the width
 ########################################
-# slab mid point
-for i in range(int(model_height/mesh_size) + 1):
-    templatePlot(CONCSLAB_NAME, i*mesh_size, atZ=model_depth/2)
+# # slab mid point
+# for i in range(int(model_height/mesh_size) + 1):
+#     templatePlot(CONCSLAB_NAME, i*mesh_size, atZ=model_depth/2)
 # in line with steelbar
 for i in range(int(model_height/mesh_size) + 1):
     templatePlot(CONCSLAB_NAME, i*mesh_size, atZ=990.6)
+templatePlot(SBAR_NAME, rebar_height, atZ=990.6)
 # in between 2 steelbar
 for i in range(int(model_height/mesh_size) + 1):
     templatePlot(CONCSLAB_NAME, i*mesh_size, atZ=838.2 + (990.6-838.2)/2)
@@ -140,12 +154,13 @@ for i in range(int(model_height/mesh_size) + 1):
 ########################################
 # Plot along the depth
 ########################################
-# slab mid point
-for i in range(int(model_height/mesh_size) + 1):
-    templatePlot(CONCSLAB_NAME, i*mesh_size, atX=model_width/2)
+# # slab mid point
+# for i in range(int(model_height/mesh_size) + 1):
+#     templatePlot(CONCSLAB_NAME, i*mesh_size, atX=model_width/2)
 # in line with steelbar
 for i in range(int(model_height/mesh_size) + 1):
     templatePlot(CONCSLAB_NAME, i*mesh_size, atX=457.2)
+templatePlot(SBAR_NAME, rebar_height, atX=457.2)
 # in between 2 steelbar
 for i in range(int(model_height/mesh_size) + 1):
     templatePlot(CONCSLAB_NAME, i*mesh_size, atX=457.2 + (1371.6-457.2)/2)
