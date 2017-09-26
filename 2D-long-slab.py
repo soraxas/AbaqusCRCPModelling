@@ -2,11 +2,14 @@
 ##### MDOEL SETTINGS
 ##################################################
 
+PARTITION_SIZE_MODIFER = 0.25
+
 model_name = '2D_CRCP'
 model_width = 1524.0 * 2
 model_height = 304.8
 rebar_location = model_height/2
-partition_size = 38.1
+partition_size = 38.1 * PARTITION_SIZE_MODIFER
+
 
 if model_name in mdb.models.keys():
     del mdb.models[model_name]
@@ -170,7 +173,7 @@ mdl.sections['ConcStbar-BondSp all-VERT'].setValues(
 ######## SHEAR LAYERS:
 
 ### shear layer connector section properties
-CONC_BASE_FRICTION_STIFFNESS_VERT_FORCE = 32027.1956
+CONC_BASE_FRICTION_STIFFNESS_VERT_FORCE = 32027.1956 * PARTITION_SIZE_MODIFER
 CONC_BASE_FRICTION_STIFFNESS_VERT_DISPLACEMENT = 50.8
 
 mdl.ConnectorSection(name='ConcBase-Friction interior-VERT',
@@ -187,7 +190,7 @@ mdl.sections['ConcBase-Friction corner-VERT'].setValues(
     (CONC_BASE_FRICTION_STIFFNESS_VERT_FORCE / 2, CONC_BASE_FRICTION_STIFFNESS_VERT_DISPLACEMENT)
     ), independentComponents=(), components=(2, )), ))
 
-CONC_BASE_FRICTION_STIFFNESS_HORZ = 236.4211
+CONC_BASE_FRICTION_STIFFNESS_HORZ = 236.4211 * PARTITION_SIZE_MODIFER
 
 mdl.ConnectorSection(name='ConcBase-Friction interior-HORZ',
     translationalType=CARTESIAN)
@@ -272,7 +275,7 @@ mdl.Temperature(createStepName='Initial',
     UNIFORM, magnitudes=(48.9, ), name='All', region=
     mdl.rootAssembly.sets['All'])
 
-T = 1.05
+T = (37.8-29.4)/(model_height/partition_size)
 for i in range(int(model_height/partition_size)+1):
     mdl.Temperature(createStepName='Visco',
         crossSectionDistribution=CONSTANT_THROUGH_THICKNESS, distributionType=
@@ -339,7 +342,7 @@ mdl.parts['steelbarPart'].assignBeamSectionOrientation(
 ## Define mesh size
 e = mdl.rootAssembly.instances['concslab'].edges + mdl.rootAssembly.instances['sbar'].edges
 mdl.rootAssembly.seedEdgeBySize(constraint=FINER,
-    deviationFactor=0.1, edges= e, size=38.1)
+    deviationFactor=0.1, edges= e, size=partition_size)
 ## Make instances independent
 mdl.rootAssembly.makeIndependent(instances=(
     mdl.rootAssembly.instances['concslab'], ))

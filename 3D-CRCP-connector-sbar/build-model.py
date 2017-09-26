@@ -73,6 +73,21 @@ def conArray(array):
     return _tmp
 ################################################################################
 
+
+##################################################
+##### CHECK for all partition coor must be rational
+##################################################
+MAX_DECIMAL_PLACE = 5
+for dimension in [model_width, model_height, model_depth]:
+    for i in range(int(dimension/partition_size)):
+        coordinate = str(float(partition_size * i))
+        if coordinate[::-1].find('.') > MAX_DECIMAL_PLACE:
+            msg = "ERROR: Dimension '{0}' divided by partition_size'{1}' produced result = '{2}', which does not produce a number within decimal place of '{3}'".format(
+            dimension, partition_size, coordinate, MAX_DECIMAL_PLACE)
+            print(msg)
+            raise AbaqusException(msg)
+
+
 ##################################################
 ##### SETUP PART DIMENSIONS
 ##################################################
@@ -291,107 +306,125 @@ for i in range(int(model_height/vertical_partition_size)-1):
 #
 print('> Partitioning by datum plane')
 # ### Partition by datum plane
-for k,v in mdl.parts['concslabPart'].datums.items():
+for _,v in mdl.parts['concslabPart'].datums.items():
 	mdl.parts['concslabPart'].PartitionCellByDatumPlane(cells=
 		mdl.parts['concslabPart'].cells, datumPlane=v)
 
-# print('> Partitioning Steelbars')
-# ## Partioning Longitudinal and Transverse steel bar in Part
-# for i in range(int(model_depth/partition_size)-1):
-# 	mdl.parts['trSteelBarPart'].DatumPointByCoordinate(coords=(
-# 		partition_size*(i+1), 0.0, 0.0))
-# for i in range(int(model_width/partition_size)-1):
-# 	mdl.parts['steelBarPart'].DatumPointByCoordinate(coords=(
-# 		partition_size*(i+1), 0.0, 0.0))
-# 	## Partitioning the steel bar
-# for i in range(int(model_width/partition_size)-1):
-# 	mdl.parts['steelBarPart'].PartitionEdgeByPoint(edge=
-#     mdl.parts['steelBarPart'].edges[i], point=
-#     mdl.parts['steelBarPart'].datums[i+2])
-# for i in range(int(model_depth/partition_size)-1):
-# 	mdl.parts['trSteelBarPart'].PartitionEdgeByPoint(edge=
-#     mdl.parts['trSteelBarPart'].edges[i], point=
-#     mdl.parts['trSteelBarPart'].datums[i+2])
+print('> Partitioning Steelbars')
+## Partioning Longitudinal and Transverse steel bar in Part
+## first create datum points
+for i in range(int(model_width/partition_size)-1):
+    mdl.parts['steelBarPart'].DatumPointByCoordinate(coords=(
+    partition_size*(i+1), 0.0, 0.0))
+for i in range(int(model_depth/partition_size)-1):
+	mdl.parts['trSteelBarPart'].DatumPointByCoordinate(coords=(
+		partition_size*(i+1), 0.0, 0.0))
 
+## Partitioning the steel bar
+for part in ['steelBarPart', 'trSteelBarPart']:
+    for _,v in mdl.parts[part].datums.items():
+        for e in mdl.parts[part].edges:
+            try:
+                mdl.parts[part].PartitionEdgeByPoint(
+                edge=e, point=v)
+            except AbaqusException as e:
+                if str(e) != "The selected point does not lie within the edge.":
+                    raise e # only catch the datum point exception
 #
-# ##################################################
-# ##### CONNECT STEEL BAR TO CONCRETE
-# ##################################################
-# print('> Connecting Steel bar to Concrete')
-# ## Define Connector behavior
-#
-# mdl.ConnectorSection(name='ConcStbar-BondSp interior-HORZ',
-#      translationalType=AXIAL)
-# mdl.sections['ConcStbar-BondSp interior-HORZ'].setValues(behaviorOptions=
-#     (ConnectorElasticity(behavior=NONLINEAR, table=((0.0, -0.2032), (
-#     -4241.1416, -0.1016), (-12107.77521, -0.0508), (-11013.28706, -0.0254), (
-#     0.0, 0.0), (11013.28706, 0.0254), (12107.77521, 0.0508), (4241.1416,
-#     0.1016), (0.0, 0.2032)), independentComponents=(), components=(1, )), ))
-# mdl.ConnectorSection(name='ConcStbar-BondSp corner-HORZ',
-#     translationalType=AXIAL)
-# mdl.sections['ConcStbar-BondSp corner-HORZ'].setValues(
-#     behaviorOptions=(ConnectorElasticity(behavior=NONLINEAR, table=((0.0,
-#     -0.2032), (-1060.2854, -0.1016), (-3026.9438035, -0.0508), (-2753.3217645,
-#     -0.0254), (0.0, 0.0), (2753.3217645, 0.0254), (3026.9438035, 0.0508),
-#     (1060.2854, 0.1016), (0.0, 0.2032)), independentComponents=(), components=(
-#     1, )), ))
+##################################################
+##### CONNECT STEEL BAR TO CONCRETE
+##################################################
+print('> Connecting Steel bar to Concrete')
+## Define Connector behavior
+
+mdl.ConnectorSection(name='ConcStbar-BondSp interior-HORZ',
+     translationalType=SLOT)
+mdl.sections['ConcStbar-BondSp interior-HORZ'].setValues(behaviorOptions=
+    (ConnectorElasticity(behavior=NONLINEAR, table=((0.0, -0.2032), (
+    -4241.1416, -0.1016), (-12107.77521, -0.0508), (-11013.28706, -0.0254), (
+    0.0, 0.0), (11013.28706, 0.0254), (12107.77521, 0.0508), (4241.1416,
+    0.1016), (0.0, 0.2032)), independentComponents=(), components=(1, )), ))
+mdl.ConnectorSection(name='ConcStbar-BondSp corner-HORZ',
+    translationalType=SLOT)
+mdl.sections['ConcStbar-BondSp corner-HORZ'].setValues(
+    behaviorOptions=(ConnectorElasticity(behavior=NONLINEAR, table=((0.0,
+    -0.2032), (-1060.2854, -0.1016), (-3026.9438035, -0.0508), (-2753.3217645,
+    -0.0254), (0.0, 0.0), (2753.3217645, 0.0254), (3026.9438035, 0.0508),
+    (1060.2854, 0.1016), (0.0, 0.2032)), independentComponents=(), components=(
+    1, )), ))
 # mdl.ConnectorSection(name='ConcStbar-BondSp all-VERT',
 #     translationalType=CARTESIAN)
 # mdl.sections['ConcStbar-BondSp all-VERT'].setValues(
 #     behaviorOptions=(ConnectorElasticity(table=((1e+15, ), ),
 #     independentComponents=(), components=(2, )), ))
-#
-# ## Connect steel bar with concrete
-#
-# # iterate all steel bar to get its vertices and connect to concrete slab
-# stbarInstances = []
-# for i in mdl.rootAssembly.instances.keys():
-#     if 'sbar' in i:
-#         stbarInstances.append(i)
-# ## store the wire in lists
-# stbarBondVert = []
-# stbarBondHort = []
-# i = 0
-# for stbar in stbarInstances:
-#     print('> Connecting wire for '+stbar)
-#     vertices = mdl.rootAssembly.instances[stbar].vertices
-#     for stbarV in vertices:
-#         print('>> Connecting vertex of '+str(stbarV))
-#
-#         concV = mdl.rootAssembly.instances['concslab'].vertices.findAt(stbarV.pointOn[0])
-#         ## connect these two point
-#         # Vertical wire
-#         _tmp = mdl.rootAssembly.WirePolyLine(mergeType=IMPRINT, meshable=OFF
-#             , points=((stbarV, concV), ))
-#         stbarBondVert.append(_tmp)
-#         ## Horziontal wire
-#         _tmp = mdl.rootAssembly.WirePolyLine(mergeType=IMPRINT, meshable=OFF
-#             , points=((stbarV, concV), ))
-#         stbarBondHort.append(_tmp)
-#
-# #### Assign connector section to wire
-# updateEdgeLookupTable()
-# ##  Horziontal
-# stbarCorner, stbarInterior = edgeNameToEdgeArrayFilter(stbarBondHort,
-#        lambda x: eql(x.pointOn[0][0], 0) or eql(x.pointOn[0][0], model_width)
-#               or eql(x.pointOn[0][2], 0) or eql(x.pointOn[0][2], model_depth))
-#
-# mdl.rootAssembly.Set(name='STCONC-Interior', edges=conArray(stbarInterior))
-# mdl.rootAssembly.SectionAssignment(region=
-#     mdl.rootAssembly.sets['STCONC-Interior'], sectionName=
-#     'ConcStbar-BondSp interior-HORZ')
-# mdl.rootAssembly.ConnectorOrientation(localCsys1=
-#     mdl.rootAssembly.datums[1], region=
-#     mdl.rootAssembly.allSets['STCONC-Interior'])
-#
-# mdl.rootAssembly.Set(name='STCONC-corner', edges=conArray(stbarCorner))
-# mdl.rootAssembly.SectionAssignment(region=
-#     mdl.rootAssembly.sets['STCONC-corner'], sectionName=
-#     'ConcStbar-BondSp corner-HORZ')
-# mdl.rootAssembly.ConnectorOrientation(localCsys1=
-#     mdl.rootAssembly.datums[1], region=
-#     mdl.rootAssembly.allSets['STCONC-corner'])
-#
+
+## Connect steel bar with concrete
+
+# iterate all steel bar to get its vertices and connect to concrete slab
+stbarInstances = []
+for i in mdl.rootAssembly.instances.keys():
+    if i.startswith('sbar'):
+        stbarInstances.append(i)
+trstbarInstances = []
+for i in mdl.rootAssembly.instances.keys():
+    if i.startswith('trsbar'):
+        trstbarInstances.append(i)
+
+sbarConnectorCSYS = mdl.rootAssembly.DatumCsysByThreePoints(
+    coordSysType=CARTESIAN, name='sbarConnectorCSYS', origin=(0.0, 0.0, 0.0),
+    point1=(1.0, 0.0, 0.0), point2=(1.0, 1.0, 0.0))
+sbarConnectorCSYS = mdl.rootAssembly.datums[sbarConnectorCSYS.id]
+trSbarConnectorCSYS = mdl.rootAssembly.DatumCsysByThreePoints(
+    coordSysType=CARTESIAN, name='trSbarConnectorCSYS', origin=(0.0, 0.0, 0.0),
+    point1=(0.0, 0.0, 1.0), point2=(0.0, 1.0, 1.0))
+print(mdl.rootAssembly.datums)
+print(trSbarConnectorCSYS.id)
+trSbarConnectorCSYS = mdl.rootAssembly.datums[trSbarConnectorCSYS.id]
+
+## store the wire in lists
+for sbar_type in ['long-sbar', 'tran-sbar']:
+    stbarBondHort = []
+    if sbar_type == 'long-sbar':
+        instances = stbarInstances
+        csys = sbarConnectorCSYS
+    elif sbar_type == 'tran-sbar':
+        instances = trstbarInstances
+        csys = trSbarConnectorCSYS
+
+    for stbar in instances:
+        print('> Connecting {0} wire for {1}'.format(sbar_type, stbar))
+        vertices = mdl.rootAssembly.instances[stbar].vertices
+        for stbarV in vertices:
+            print('>> Connecting vertex of '+str(stbarV))
+            concV = mdl.rootAssembly.instances['concslab'].vertices.findAt(stbarV.pointOn[0])
+            _tmp = mdl.rootAssembly.WirePolyLine(mergeType=IMPRINT, meshable=OFF
+                , points=((stbarV, concV), ))
+            stbarBondHort.append(_tmp)
+
+    #### Assign connector section to wire
+    updateEdgeLookupTable()
+    print(stbarBondHort)
+    ##  Horziontal
+    stbarCorner, stbarInterior = edgeNameToEdgeArrayFilter(stbarBondHort,
+           lambda x: eql(x.pointOn[0][0], 0) or eql(x.pointOn[0][0], model_width)
+                  or eql(x.pointOn[0][2], 0) or eql(x.pointOn[0][2], model_depth))
+
+    mdl.rootAssembly.Set(name='STCONC-{0}-Interior'.format(sbar_type), edges=conArray(stbarInterior))
+    mdl.rootAssembly.SectionAssignment(region=
+        mdl.rootAssembly.sets['STCONC-{0}-Interior'.format(sbar_type)], sectionName=
+        'ConcStbar-BondSp interior-HORZ')
+    mdl.rootAssembly.ConnectorOrientation(localCsys1=
+        csys, region=
+        mdl.rootAssembly.allSets['STCONC-{0}-Interior'.format(sbar_type)])
+
+    mdl.rootAssembly.Set(name='STCONC-{0}-Corner'.format(sbar_type), edges=conArray(stbarCorner))
+    mdl.rootAssembly.SectionAssignment(region=
+        mdl.rootAssembly.sets['STCONC-{0}-Corner'.format(sbar_type)], sectionName=
+        'ConcStbar-BondSp corner-HORZ')
+    mdl.rootAssembly.ConnectorOrientation(localCsys1=
+        csys, region=
+        mdl.rootAssembly.allSets['STCONC-{0}-Corner'.format(sbar_type)])
+
 # ##  Vertical
 # stbarVert, _ = edgeNameToEdgeArrayFilter(stbarBondVert,
 #                                lambda x: True)
@@ -404,32 +437,6 @@ for k,v in mdl.parts['concslabPart'].datums.items():
 #     mdl.rootAssembly.datums[1], region=
 #     mdl.rootAssembly.allSets['STCONC-VERT'])
 
-
-##################################################
-##### EMBED SBAR TO CONCRETESLAB
-##################################################
-
-mdl.rootAssembly.Set(edges=
-    mdl.rootAssembly.instances['sbar1'].edges+\
-    mdl.rootAssembly.instances['sbar2'].edges+\
-    mdl.rootAssembly.instances['sbar3'].edges+\
-    mdl.rootAssembly.instances['sbar4'].edges+\
-    mdl.rootAssembly.instances['sbar5'].edges+\
-    mdl.rootAssembly.instances['sbar6'].edges+\
-    mdl.rootAssembly.instances['sbar7'].edges+\
-    mdl.rootAssembly.instances['sbar8'].edges+\
-    mdl.rootAssembly.instances['sbar9'].edges+\
-    mdl.rootAssembly.instances['sbar10'].edges+\
-    mdl.rootAssembly.instances['sbar11'].edges+\
-    mdl.rootAssembly.instances['sbar12'].edges+\
-    mdl.rootAssembly.instances['trsbar1'].edges+\
-    mdl.rootAssembly.instances['trsbar2'].edges, name='steelbars-set')
-mdl.rootAssembly.Set(cells=
-    mdl.rootAssembly.instances['concslab'].cells, name='concslab-set')
-mdl.EmbeddedRegion(absoluteTolerance=0.0, embeddedRegion=
-    mdl.rootAssembly.sets['steelbars-set'], fractionalTolerance=
-    0.05, hostRegion=mdl.rootAssembly.sets['concslab-set'], name=
-    'sbar-embedded-to-concslab', toleranceMethod=BOTH, weightFactorTolerance=1e-06)
 
 
 ##################################################
@@ -502,14 +509,14 @@ mdl.SurfaceToSurfaceContactStd(adjustMethod=NONE,
 #     behaviorOptions=(ConnectorElasticity(table=((CONC_BASE_FRICTION_STIFFNESS_HORZ / 4, ), ),
 #     independentComponents=(), components=(1, )), ))
 #
-# # ## Connect steel bar with concrete
-# #
-# # # iterate all steel bar to get its vertices and connect to concrete slab
-# # stbarInstances = []
-# # for i in mdl.rootAssembly.instances.keys():
-# #     if 'sbar' in i:
-# #         stbarInstances.append(i)
-# ## store the wire in lists
+# ## Connect steel bar with concrete
+#
+# # iterate all steel bar to get its vertices and connect to concrete slab
+# stbarInstances = []
+# for i in mdl.rootAssembly.instances.keys():
+#     if 'sbar' in i:
+#         stbarInstances.append(i)
+## store the wire in lists
 # concBaseBondVert = []
 # concBaseBondHorz = []
 #
@@ -685,9 +692,41 @@ mdl.DisplacementBC(amplitude=UNSET, createStepName='Initial',
 ##### CREATE STEPS
 ##################################################
 
+mdl.rootAssembly.Set(edges=
+    mdl.rootAssembly.instances['sbar1'].edges+\
+    mdl.rootAssembly.instances['sbar2'].edges+\
+    mdl.rootAssembly.instances['sbar3'].edges+\
+    mdl.rootAssembly.instances['sbar4'].edges+\
+    mdl.rootAssembly.instances['sbar5'].edges+\
+    mdl.rootAssembly.instances['sbar6'].edges+\
+    mdl.rootAssembly.instances['sbar7'].edges+\
+    mdl.rootAssembly.instances['sbar8'].edges+\
+    mdl.rootAssembly.instances['sbar9'].edges+\
+    mdl.rootAssembly.instances['sbar10'].edges+\
+    mdl.rootAssembly.instances['sbar11'].edges+\
+    mdl.rootAssembly.instances['sbar12'].edges+\
+    mdl.rootAssembly.instances['trsbar1'].edges+\
+    mdl.rootAssembly.instances['trsbar2'].edges,
+    vertices=
+    mdl.rootAssembly.instances['sbar1'].vertices+\
+    mdl.rootAssembly.instances['sbar2'].vertices+\
+    mdl.rootAssembly.instances['sbar3'].vertices+\
+    mdl.rootAssembly.instances['sbar4'].vertices+\
+    mdl.rootAssembly.instances['sbar5'].vertices+\
+    mdl.rootAssembly.instances['sbar6'].vertices+\
+    mdl.rootAssembly.instances['sbar7'].vertices+\
+    mdl.rootAssembly.instances['sbar8'].vertices+\
+    mdl.rootAssembly.instances['sbar9'].vertices+\
+    mdl.rootAssembly.instances['sbar10'].vertices+\
+    mdl.rootAssembly.instances['sbar11'].vertices+\
+    mdl.rootAssembly.instances['sbar12'].vertices+\
+    mdl.rootAssembly.instances['trsbar1'].vertices+\
+    mdl.rootAssembly.instances['trsbar2'].vertices,
+    name='steelbars-set')
+
 TEMP_REGION = Region(
 # faces=mdl.rootAssembly.instances['concslab'].faces,
-cells=mdl.rootAssembly.instances['concslab'].cells,
+# cells=mdl.rootAssembly.instances['concslab'].cells,
 # edges=mdl.rootAssembly.instances['sbar1'].edges+\
 # mdl.rootAssembly.instances['trsbar1'].edges+\
 # mdl.rootAssembly.instances['sbar2'].edges+\
@@ -703,22 +742,22 @@ cells=mdl.rootAssembly.instances['concslab'].cells,
 # mdl.rootAssembly.instances['sbar12'].edges+\
 # mdl.rootAssembly.instances['trsbar2'].edges,
 # vertices=
-# mdl.rootAssembly.instances['concslab'].vertices
-# +\
-# mdl.rootAssembly.instances['sbar1'].vertices+\
-# mdl.rootAssembly.instances['trsbar1'].vertices+\
-# mdl.rootAssembly.instances['sbar2'].vertices+\
-# mdl.rootAssembly.instances['sbar3'].vertices+\
-# mdl.rootAssembly.instances['sbar4'].vertices+\
-# mdl.rootAssembly.instances['sbar5'].vertices+\
-# mdl.rootAssembly.instances['sbar6'].vertices+\
-# mdl.rootAssembly.instances['sbar7'].vertices+\
-# mdl.rootAssembly.instances['sbar8'].vertices+\
-# mdl.rootAssembly.instances['sbar9'].vertices+\
-# mdl.rootAssembly.instances['sbar10'].vertices+\
-# mdl.rootAssembly.instances['sbar11'].vertices+\
-# mdl.rootAssembly.instances['sbar12'].vertices+\
-# mdl.rootAssembly.instances['trsbar2'].vertices
+mdl.rootAssembly.instances['concslab'].vertices
++\
+mdl.rootAssembly.instances['sbar1'].vertices+\
+mdl.rootAssembly.instances['trsbar1'].vertices+\
+mdl.rootAssembly.instances['sbar2'].vertices+\
+mdl.rootAssembly.instances['sbar3'].vertices+\
+mdl.rootAssembly.instances['sbar4'].vertices+\
+mdl.rootAssembly.instances['sbar5'].vertices+\
+mdl.rootAssembly.instances['sbar6'].vertices+\
+mdl.rootAssembly.instances['sbar7'].vertices+\
+mdl.rootAssembly.instances['sbar8'].vertices+\
+mdl.rootAssembly.instances['sbar9'].vertices+\
+mdl.rootAssembly.instances['sbar10'].vertices+\
+mdl.rootAssembly.instances['sbar11'].vertices+\
+mdl.rootAssembly.instances['sbar12'].vertices+\
+mdl.rootAssembly.instances['trsbar2'].vertices
 )
 
 
@@ -729,14 +768,14 @@ mdl.StaticStep(name='Step-1', previous='Initial')
 
 
 
-expression = '(({0}-{1})/{2}*Y+{1})/{0}'.format(TEMP_BOTSURFACE, TEMP_TOPSURFACE, model_height)
-mdl.ExpressionField(description=
-    'The temperature gradient for concslab, from top surface as ', expression=
-    expression, localCsys=None, name='Temperature Gradient of concslab')
-mdl.Temperature(createStepName='Step-1',
-    crossSectionDistribution=CONSTANT_THROUGH_THICKNESS, distributionType=FIELD
-    , field='Temperature Gradient of concslab', magnitudes=(TEMP_BOTSURFACE, ), name='Conc-gradient-field',
-    region=TEMP_REGION)
+# expression = '(({0}-{1})/{2}*Y+{1})/{0}'.format(TEMP_BOTSURFACE, TEMP_TOPSURFACE, model_height)
+# mdl.ExpressionField(description=
+#     'The temperature gradient for concslab, from top surface as ', expression=
+#     expression, localCsys=None, name='Temperature Gradient of concslab')
+# mdl.Temperature(createStepName='Step-1',
+#     crossSectionDistribution=CONSTANT_THROUGH_THICKNESS, distributionType=FIELD
+#     , field='Temperature Gradient of concslab', magnitudes=(TEMP_BOTSURFACE, ), name='Conc-gradient-field',
+#     region=TEMP_REGION)
 
 # mdl.Temperature(createStepName='Step-1',
 #     crossSectionDistribution=CONSTANT_THROUGH_THICKNESS, distributionType=
@@ -747,16 +786,16 @@ mdl.Temperature(createStepName='Step-1',
 #     UNIFORM, magnitudes=(TEMP_BOTSURFACE, ), name='concslab-botSutfaceTemp', region=
 #     mdl.rootAssembly.sets['SurfaceSet_yMin'])
 
-# mdl.Temperature(createStepName='Step-1',
-#     crossSectionDistribution=CONSTANT_THROUGH_THICKNESS, distributionType=
-#     UNIFORM, magnitudes=(TEMP_TOPSURFACE + (TEMP_BOTSURFACE-TEMP_TOPSURFACE)/2, ), name='sbar-midTemp', region=
-#     mdl.rootAssembly.sets['steelbars-set'])
-# tempStep = (TEMP_BOTSURFACE - TEMP_TOPSURFACE)/int(model_height/vertical_partition_size)
-# for i in range(int(model_height/vertical_partition_size) + 1):
-#     mdl.Temperature(createStepName='Step-1',
-#         crossSectionDistribution=CONSTANT_THROUGH_THICKNESS, distributionType=
-#         UNIFORM, magnitudes=(TEMP_TOPSURFACE + i*tempStep, ), name='TempLvl_'+str(i), region=
-#         mdl.rootAssembly.sets['NodeSurfaceSetLvl_'+str(i)])
+mdl.Temperature(createStepName='Step-1',
+    crossSectionDistribution=CONSTANT_THROUGH_THICKNESS, distributionType=
+    UNIFORM, magnitudes=(TEMP_TOPSURFACE + (TEMP_BOTSURFACE-TEMP_TOPSURFACE)/2, ), name='sbar-midTemp', region=
+    mdl.rootAssembly.sets['steelbars-set'])
+tempStep = (TEMP_BOTSURFACE - TEMP_TOPSURFACE)/int(model_height/vertical_partition_size)
+for i in range(int(model_height/vertical_partition_size) + 1):
+    mdl.Temperature(createStepName='Step-1',
+        crossSectionDistribution=CONSTANT_THROUGH_THICKNESS, distributionType=
+        UNIFORM, magnitudes=(TEMP_TOPSURFACE + i*tempStep, ), name='TempLvl_'+str(i), region=
+        mdl.rootAssembly.sets['NodeSurfaceSetLvl_'+str(i)])
 
 ## reset the initial tempStep
 # mdl.predefinedFields['Initial-temp'].resetToInitial(stepName='Step-1')
