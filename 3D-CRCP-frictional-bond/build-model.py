@@ -71,6 +71,12 @@ def conArray(array):
     for i in range(1, len(array)):
         _tmp += array[i]
     return _tmp
+
+def model_sbar_location_generator(dimension, spacing):
+    # given the sbar spacing and the dimension of the block,
+    # return the location of sbar that lies within the model.
+    return (spacing/2+x*spacing for x in range(int(1+(dimension-spacing/2)/spacing)))
+
 ################################################################################
 
 
@@ -106,7 +112,7 @@ mdl.Part(dimensionality=THREE_D, name='concslabPart', type=
     DEFORMABLE_BODY)
 mdl.parts['concslabPart'].BaseSolidExtrude(depth=model_depth, sketch=
     mdl.sketches['__profile__'])
-# sbar hollow
+# losbar hollow
 mdl.ConstrainedSketch(gridSpacing=119.99, name='__profile__',
     sheetSize=4799.99, transform=
     mdl.parts['concslabPart'].MakeSketchTransform(
@@ -116,25 +122,33 @@ mdl.ConstrainedSketch(gridSpacing=119.99, name='__profile__',
     sketchOrientation=RIGHT, origin=(1524.0, 0, model_depth)))
 mdl.parts['concslabPart'].projectReferencesOntoSketch(filter=
     COPLANAR_EDGES, sketch=mdl.sketches['__profile__'])
-for i in range(int(model_depth/sbar_spacing)):
-	x = sbar_spacing/2 + sbar_spacing * i
+for i in range(int(model_depth/losbar_spacing)):
+	x = losbar_spacing/2 + losbar_spacing * i
 	y = model_height/2
 	mdl.sketches['__profile__'].CircleByCenterPerimeter(center=(
-		x, y), point1=(x + sbar_diameter/2, y))
+		x, y), point1=(x + losbar_diameter/2, y))
 mdl.parts['concslabPart'].CutExtrude(flipExtrudeDirection=OFF
     , sketch=mdl.sketches['__profile__'], sketchOrientation=
     RIGHT, sketchPlane=mdl.parts['concslabPart'].faces[2],
     sketchPlaneSide=SIDE1, sketchUpEdge=
     mdl.parts['concslabPart'].edges[9])
 del mdl.sketches['__profile__']
-
+# subbase
+mdl.ConstrainedSketch(name='__profile__', sheetSize=3000.0)
+mdl.sketches['__profile__'].rectangle(point1=(0.0, 0.0),
+    point2=(model_width, subbase_thickness))
+mdl.Part(dimensionality=THREE_D, name='subbasePart', type=
+    DEFORMABLE_BODY)
+mdl.parts['subbasePart'].BaseSolidExtrude(depth=model_depth, sketch=
+    mdl.sketches['__profile__'])
+del mdl.sketches['__profile__']
 # Steel bar
 mdl.ConstrainedSketch(name='__profile__', sheetSize=3000.0)
 mdl.sketches['__profile__'].CircleByCenterPerimeter(center=(
-    0.0, 0.0), point1=(sbar_diameter/2, 0.0))
-mdl.Part(dimensionality=THREE_D, name='steelbarPart', type=
+    0.0, 0.0), point1=(losbar_diameter/2, 0.0))
+mdl.Part(dimensionality=THREE_D, name='loSteelbarPart', type=
     DEFORMABLE_BODY)
-mdl.parts['steelbarPart'].BaseSolidExtrude(depth=model_width, sketch=
+mdl.parts['loSteelbarPart'].BaseSolidExtrude(depth=model_width, sketch=
     mdl.sketches['__profile__'])
 del mdl.sketches['__profile__']
 # Transverse Steel bar
@@ -202,8 +216,10 @@ mdl.materials['TrSteel'].Expansion(table=((1.08e-05, ), ))
 mdl.rootAssembly.DatumCsysByDefault(CARTESIAN)
 mdl.rootAssembly.Instance(dependent=ON, name='concslab',
     part=mdl.parts['concslabPart'])
-mdl.rootAssembly.Instance(dependent=ON, name='sbar', part=
-    mdl.parts['steelbarPart'])
+mdl.rootAssembly.Instance(dependent=ON, name='subbase',
+    part=mdl.parts['subbasePart'])
+mdl.rootAssembly.Instance(dependent=ON, name='losbar', part=
+    mdl.parts['loSteelbarPart'])
 mdl.rootAssembly.Instance(dependent=ON, name='trsbar',
     part=mdl.parts['trSteelBarPart'])
 # mdl.rootAssembly.Instance(dependent=ON, name='wheel-1',
@@ -212,28 +228,31 @@ mdl.rootAssembly.Instance(dependent=ON, name='trsbar',
 ##################################################
 ##### TRANSLATE INSTANCES TO CORRECT POS
 ##################################################
+### subbase
+mdl.rootAssembly.translate(instanceList=('subbase', ),
+    vector=(0.0, -subbase_thickness, 0))
 ### Lognitudial steel bar
 mdl.rootAssembly.rotate(angle=270.0, axisDirection=(0.0,
-    model_height, 0.0), axisPoint=(model_width, 0.0, 0.0), instanceList=('sbar', ))
-mdl.rootAssembly.translate(instanceList=('sbar', ),
+    model_height, 0.0), axisPoint=(model_width, 0.0, 0.0), instanceList=('losbar', ))
+mdl.rootAssembly.translate(instanceList=('losbar', ),
     vector=(0.0, 152.4, 1600.2))
 # clone by increments
 mdl.rootAssembly.LinearInstancePattern(direction1=(-1.0, 0.0,
-    0.0), direction2=(0.0, 0.0, 1.0), instanceList=('sbar', ), number1=1,
+    0.0), direction2=(0.0, 0.0, 1.0), instanceList=('losbar', ), number1=1,
     number2=12, spacing1=model_width, spacing2=152.4)
 # rename to better names
-mdl.rootAssembly.features.changeKey(fromName='sbar', toName='sbar1')
-mdl.rootAssembly.features.changeKey(fromName='sbar-lin-1-2', toName='sbar2')
-mdl.rootAssembly.features.changeKey(fromName='sbar-lin-1-3', toName='sbar3')
-mdl.rootAssembly.features.changeKey(fromName='sbar-lin-1-4', toName='sbar4')
-mdl.rootAssembly.features.changeKey(fromName='sbar-lin-1-5', toName='sbar5')
-mdl.rootAssembly.features.changeKey(fromName='sbar-lin-1-6', toName='sbar6')
-mdl.rootAssembly.features.changeKey(fromName='sbar-lin-1-7', toName='sbar7')
-mdl.rootAssembly.features.changeKey(fromName='sbar-lin-1-8', toName='sbar8')
-mdl.rootAssembly.features.changeKey(fromName='sbar-lin-1-9', toName='sbar9')
-mdl.rootAssembly.features.changeKey(fromName='sbar-lin-1-10', toName='sbar10')
-mdl.rootAssembly.features.changeKey(fromName='sbar-lin-1-11', toName='sbar11')
-mdl.rootAssembly.features.changeKey(fromName='sbar-lin-1-12', toName='sbar12')
+mdl.rootAssembly.features.changeKey(fromName='losbar', toName='losbar1')
+mdl.rootAssembly.features.changeKey(fromName='losbar-lin-1-2', toName='losbar2')
+mdl.rootAssembly.features.changeKey(fromName='losbar-lin-1-3', toName='losbar3')
+mdl.rootAssembly.features.changeKey(fromName='losbar-lin-1-4', toName='losbar4')
+mdl.rootAssembly.features.changeKey(fromName='losbar-lin-1-5', toName='losbar5')
+mdl.rootAssembly.features.changeKey(fromName='losbar-lin-1-6', toName='losbar6')
+mdl.rootAssembly.features.changeKey(fromName='losbar-lin-1-7', toName='losbar7')
+mdl.rootAssembly.features.changeKey(fromName='losbar-lin-1-8', toName='losbar8')
+mdl.rootAssembly.features.changeKey(fromName='losbar-lin-1-9', toName='losbar9')
+mdl.rootAssembly.features.changeKey(fromName='losbar-lin-1-10', toName='losbar10')
+mdl.rootAssembly.features.changeKey(fromName='losbar-lin-1-11', toName='losbar11')
+mdl.rootAssembly.features.changeKey(fromName='losbar-lin-1-12', toName='losbar12')
 ### Transverse steel bar
 mdl.rootAssembly.instances['trsbar'].translate(vector=(
     1371.6, 152.4, 0.0))
@@ -256,6 +275,10 @@ mdl.rootAssembly.features.changeKey(fromName='trsbar-lin-2-1', toName='trsbar2')
 ##################################################
 mdl.HomogeneousSolidSection(material='Concrete', name=
     'ConcSection', thickness=None)
+mdl.HomogeneousSolidSection(material='Subbase', name=
+    'SubbaseSection', thickness=None)
+mdl.HomogeneousSolidSection(material='Concrete', name=
+    'ConcSection', thickness=None)
 mdl.HomogeneousSolidSection(material='Steel', name=
     'sbarSection', thickness=None)
 mdl.HomogeneousSolidSection(material='TrSteel', name=
@@ -265,9 +288,9 @@ mdl.parts['concslabPart'].SectionAssignment(offset=0.0,
     cells=mdl.parts['concslabPart'].cells.getSequenceFromMask(
     mask=('[#1 ]', ), )), sectionName='ConcSection', thicknessAssignment=
     FROM_SECTION)
-mdl.parts['steelbarPart'].SectionAssignment(offset=0.0,
+mdl.parts['loSteelbarPart'].SectionAssignment(offset=0.0,
     offsetField='', offsetType=MIDDLE_SURFACE, region=Region(
-    cells=mdl.parts['steelbarPart'].cells.getSequenceFromMask(
+    cells=mdl.parts['loSteelbarPart'].cells.getSequenceFromMask(
     mask=('[#1 ]', ), )), sectionName='sbarSection', thicknessAssignment=
     FROM_SECTION)
 mdl.parts['trSteelBarPart'].SectionAssignment(offset=0.0,
@@ -306,23 +329,31 @@ vertices = mdl.rootAssembly.instances['concslab'].vertices.getByBoundingBox(zMax
 mdl.rootAssembly.Set(name='NodeSet_zMax', vertices=vertices)
 
 ## create the steel bar node set
-sbarXMin = []
-sbarXMax = []
+losbarXMin_faces = []
+losbarXMax_faces = []
+losbarXMin_vertices = []
+losbarXMax_vertices = []
 for k in mdl.rootAssembly.instances.keys():
-    if k.startswith('sbar'):
-        sbarXMin.append(mdl.rootAssembly.instances[k].vertices.getByBoundingBox(xMax=0, xMin=0))
-        sbarXMax.append(mdl.rootAssembly.instances[k].vertices.getByBoundingBox(xMax=model_width, xMin=model_width))
-mdl.rootAssembly.Set(name='sbarNodeSet_xMin', vertices=conArray(sbarXMin))
-mdl.rootAssembly.Set(name='sbarNodeSet_xMax', vertices=conArray(sbarXMax))
+    if k.startswith('losbar'):
+        losbarXMin_faces.append(mdl.rootAssembly.instances[k].faces.getByBoundingBox(xMax=0, xMin=0))
+        losbarXMax_faces.append(mdl.rootAssembly.instances[k].faces.getByBoundingBox(xMax=model_width, xMin=model_width))
+        losbarXMin_vertices.append(mdl.rootAssembly.instances[k].vertices.getByBoundingBox(xMax=0, xMin=0))
+        losbarXMax_vertices.append(mdl.rootAssembly.instances[k].vertices.getByBoundingBox(xMax=model_width, xMin=model_width))
+mdl.rootAssembly.Set(name='sbarNodeSet_xMin', vertices=conArray(losbarXMin_vertices), faces=conArray(losbarXMin_faces))
+mdl.rootAssembly.Set(name='sbarNodeSet_xMax', vertices=conArray(losbarXMax_vertices), faces=conArray(losbarXMax_faces))
 
-trsbarZMin = []
-trsbarZMax = []
+trsbarZMin_faces = []
+trsbarZMax_faces = []
+trsbarZMin_vertices = []
+trsbarZMax_vertices = []
 for k in mdl.rootAssembly.instances.keys():
     if k.startswith('trsbar'):
-        trsbarZMin.append(mdl.rootAssembly.instances[k].vertices.getByBoundingBox(zMax=0, zMin=0))
-        trsbarZMax.append(mdl.rootAssembly.instances[k].vertices.getByBoundingBox(zMax=model_depth, zMin=model_depth))
-mdl.rootAssembly.Set(name='sbarNodeSet_zMin', vertices=conArray(trsbarZMin))
-mdl.rootAssembly.Set(name='sbarNodeSet_zMax', vertices=conArray(trsbarZMax))
+        trsbarZMin_faces.append(mdl.rootAssembly.instances[k].faces.getByBoundingBox(zMax=0, zMin=0))
+        trsbarZMax_faces.append(mdl.rootAssembly.instances[k].faces.getByBoundingBox(zMax=model_depth, zMin=model_depth))
+        trsbarZMin_vertices.append(mdl.rootAssembly.instances[k].vertices.getByBoundingBox(zMax=0, zMin=0))
+        trsbarZMax_vertices.append(mdl.rootAssembly.instances[k].vertices.getByBoundingBox(zMax=model_depth, zMin=model_depth))
+mdl.rootAssembly.Set(name='sbarNodeSet_zMin', vertices=conArray(trsbarZMin_vertices), faces=conArray(trsbarZMin_faces))
+mdl.rootAssembly.Set(name='sbarNodeSet_zMax', vertices=conArray(trsbarZMax_vertices), faces=conArray(trsbarZMax_faces))
 
 ####### Create Surface set on all six faces
 faces = mdl.rootAssembly.instances['concslab'].faces.getByBoundingBox(xMax=0, xMin=0)
@@ -338,6 +369,105 @@ mdl.rootAssembly.Set(name='SurfaceSet_zMin', faces=faces)
 faces = mdl.rootAssembly.instances['concslab'].faces.getByBoundingBox(zMax=model_depth, zMin=model_depth)
 mdl.rootAssembly.Set(name='SurfaceSet_zMax', faces=faces)
 
+
+
+##################################################
+##### CONNECT CONCRETE TO SBAR SURFACES
+##################################################
+sbar_instances = [x for x in mdl.rootAssembly.instances.keys() if 'sbar' in x]
+
+mdl.ContactProperty('Conc-losbar-contact-prop')
+mdl.interactionProperties['Conc-losbar-contact-prop'].CohesiveBehavior(
+    eligibility=INITIAL_NODES,
+    defaultPenalties=OFF, table=((1e10, 190, 190), ))
+####
+mdl.ContactProperty('Conc-trsbar-contact-prop')
+mdl.interactionProperties['Conc-trsbar-contact-prop'].CohesiveBehavior(
+    eligibility=INITIAL_NODES,
+    defaultPenalties=OFF, table=((1e10, 190, 190), ))
+
+##########
+## face sets for frictional contact
+
+## For long-sbar
+instances = [k for k in mdl.rootAssembly.instances.keys() if k.startswith('losbar')]
+instances.append('concslab')
+for i, z_ori in enumerate(model_sbar_location_generator(model_depth, losbar_spacing)):
+    conc_set = None
+    sbar_set = None
+    for instance in instances:
+        faces = mdl.rootAssembly.instances[instance].faces.getByBoundingBox(
+            yMin=rebar_height-losbar_diameter, yMax=rebar_height+losbar_diameter,
+            zMin=z_ori-trsbar_diameter, zMax=z_ori+trsbar_diameter,
+            xMin=0, xMax=model_width
+            )
+        if len(faces) > 0:
+            set_name = 'losbar_face-'+instance+'-'+str(i+1)
+            mdl.rootAssembly.Set(name=set_name, faces=faces)
+            if instance == 'concslab':
+                conc_set = set_name
+            else:
+                sbar_set = set_name
+    if conc_set is None or sbar_set is None:
+        raise AbaqusException("ERROR: sbar surface set not found")
+    mdl.SurfaceToSurfaceContactStd(adjustMethod=NONE,
+        clearanceRegion=None, createStepName='Initial', datumAxis=None,
+        initialClearance=OMIT, interactionProperty=contact,
+        master=Region(side1Faces=mdl.rootAssembly.sets[conc_set].faces),
+        slave=Region(side1Faces=mdl.rootAssembly.sets[sbar_set].faces),
+        name='Conc-losbar-contact'+str(i+1), sliding=SMALL, thickness=ON)
+
+
+## For tran-sbar
+instances = [k for k in mdl.rootAssembly.instances.keys() if k.startswith('trsbar')]
+instances.append('concslab')
+for i, x_ori in enumerate(model_sbar_location_generator(model_width, trsbar_spacing)):
+    conc_set = None
+    sbar_set = None
+    for instance in instances:
+        faces = mdl.rootAssembly.instances[instance].faces.getByBoundingBox(
+            yMin=rebar_height-trsbar_diameter, yMax=rebar_height+trsbar_diameter,
+            xMin=x_ori-trsbar_diameter, xMax=x_ori+trsbar_diameter,
+            zMin=0, zMax=model_depth
+            )
+        if len(faces) > 0:
+            set_name = 'losbar_face-'+instance+'-'+str(i+1)
+            mdl.rootAssembly.Set(name=set_name, faces=faces)
+            if instance == 'concslab':
+                conc_set = set_name
+            else:
+                sbar_set = set_name
+    if conc_set is None or sbar_set is None:
+        raise AbaqusException("ERROR: sbar surface set not found")
+    mdl.SurfaceToSurfaceContactStd(adjustMethod=NONE,
+        clearanceRegion=None, createStepName='Initial', datumAxis=None,
+        initialClearance=OMIT, interactionProperty=contact,
+        master=Region(side1Faces=mdl.rootAssembly.sets[conc_set].faces),
+        slave=Region(side1Faces=mdl.rootAssembly.sets[sbar_set].faces),
+        name='Conc-trsbar-contact'+str(i+1), sliding=SMALL, thickness=ON)
+
+
+
+##################################################
+##### CONNECT CONCRETE TO SUBBASE
+##################################################
+concBottomFace = mdl.rootAssembly.instances['concslab'].faces.getByBoundingBox(
+    xMin=0, xMax=model_width,
+    zMin=0, zMax=model_depth,
+    yMin=0, yMax=0)
+subbaseTopFace = mdl.rootAssembly.instances['subbase'].faces.getByBoundingBox(
+    xMin=0, xMax=model_width,
+    zMin=0, zMax=model_depth,
+    yMin=0, yMax=0)
+mdl.ContactProperty('ConcSubbase-contact-prop')
+mdl.interactionProperties['ConcSubbase-contact-prop'].CohesiveBehavior(
+    defaultPenalties=OFF, table=((32027.1956, 236.4211, 236.4211), ))
+mdl.SurfaceToSurfaceContactStd(adjustMethod=NONE,
+    clearanceRegion=None, createStepName='Initial', datumAxis=None,
+    initialClearance=OMIT, interactionProperty='ConcSubbase-contact-prop', master=Region(
+    side1Faces=concBottomFace), name='ConcSubbase-contact', slave=Region(
+    side1Faces=subbaseTopFace), sliding=SMALL, thickness=ON)
+
 ##################################################
 ##### BOUNDARY CONDITION
 ##################################################
@@ -347,7 +477,7 @@ mdl.DisplacementBC(amplitude=UNSET, createStepName='Initial',
     distributionType=UNIFORM, fieldName='', localCsys=None, name='FrontBC',
     region=mdl.rootAssembly.sets['SurfaceSet_zMin'], u1=UNSET, u2=
     UNSET, u3=SET, ur1=UNSET, ur2=UNSET, ur3=UNSET)
-# sbar
+# losbar
 mdl.DisplacementBC(amplitude=UNSET, createStepName='Initial',
     distributionType=UNIFORM, fieldName='', localCsys=None, name='sbarXMinBC',
     region=mdl.rootAssembly.sets['sbarNodeSet_xMin'], u1=SET, u2=
@@ -366,11 +496,62 @@ mdl.DisplacementBC(amplitude=UNSET, createStepName='Initial',
     UNSET, u3=SET, ur1=SET, ur2=UNSET, ur3=SET)
 
 
+########## TEMPERATURE ################
+TEMP_REGION = Region(
+faces=mdl.rootAssembly.instances['concslab'].faces,
+cells=mdl.rootAssembly.instances['concslab'].cells,
+edges=mdl.rootAssembly.instances['trsbar1'].edges+\
+mdl.rootAssembly.instances['trsbar2'].edges+\
+mdl.rootAssembly.instances['losbar1'].edges+\
+mdl.rootAssembly.instances['losbar2'].edges+\
+mdl.rootAssembly.instances['losbar3'].edges+\
+mdl.rootAssembly.instances['losbar4'].edges+\
+mdl.rootAssembly.instances['losbar5'].edges+\
+mdl.rootAssembly.instances['losbar6'].edges+\
+mdl.rootAssembly.instances['losbar7'].edges+\
+mdl.rootAssembly.instances['losbar8'].edges+\
+mdl.rootAssembly.instances['losbar9'].edges+\
+mdl.rootAssembly.instances['losbar10'].edges+\
+mdl.rootAssembly.instances['losbar11'].edges+\
+mdl.rootAssembly.instances['losbar12'].edges,
+vertices=mdl.rootAssembly.instances['concslab'].vertices+\
+mdl.rootAssembly.instances['trsbar1'].vertices+\
+mdl.rootAssembly.instances['trsbar2'].vertices+\
+mdl.rootAssembly.instances['losbar1'].vertices+\
+mdl.rootAssembly.instances['losbar2'].vertices+\
+mdl.rootAssembly.instances['losbar3'].vertices+\
+mdl.rootAssembly.instances['losbar4'].vertices+\
+mdl.rootAssembly.instances['losbar5'].vertices+\
+mdl.rootAssembly.instances['losbar6'].vertices+\
+mdl.rootAssembly.instances['losbar7'].vertices+\
+mdl.rootAssembly.instances['losbar8'].vertices+\
+mdl.rootAssembly.instances['losbar9'].vertices+\
+mdl.rootAssembly.instances['losbar10'].vertices+\
+mdl.rootAssembly.instances['losbar11'].vertices+\
+mdl.rootAssembly.instances['losbar12'].vertices
+)
+
+mdl.Temperature(createStepName='Initial',
+    crossSectionDistribution=CONSTANT_THROUGH_THICKNESS, distributionType=
+    UNIFORM, magnitudes=(TEMP_INITIAL, ), name='Initial-temp', region=TEMP_REGION)
+mdl.StaticStep(name='Step-1', previous='Initial')
+
+expression = '(({0}-{1})/{2}*Y+{1})'.format(TEMP_BOTSURFACE, TEMP_TOPSURFACE, model_height)
+mdl.ExpressionField(description=
+    'The temperature gradient for concslab, from top surface as ', expression=
+    expression, localCsys=None, name='Temperature Gradient of concslab')
+mdl.Temperature(createStepName='Step-1',
+    crossSectionDistribution=CONSTANT_THROUGH_THICKNESS, distributionType=FIELD
+    , field='Temperature Gradient of concslab', magnitudes=(1, ), name='Conc-gradient-field',
+    region=TEMP_REGION)
+
+
+
 ########## SEEDING MESH ################
 
 
 
-for part in ['concslabPart', 'steelbarPart', 'trSteelBarPart']:
+for part in ['concslabPart', 'loSteelbarPart', 'trSteelBarPart', 'subbasePart']:
     mdl.parts[part].seedPart(deviationFactor=0.1,
         minSizeFactor=0.1, size=38.1)
 

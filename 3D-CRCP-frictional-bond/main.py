@@ -6,13 +6,17 @@ SCRIPT_PATH_DIRECTORY = r"C:\Users\Oscar\GIT\3D-CRCP-frictional-bond/"
 def main():
     global OPT_build, OPT_run, OPT_plot, OPT_save_plot
 
+    # run('test.py')
+    # return
+
     if OPT_build:
         global DELETE_EXISTING_MODEL
         DELETE_EXISTING_MODEL = True
         run('build-model.py')
 
     if OPT_run:
-        run('run-analysis.py')
+        # run('run-analysis.py')
+        pass
 
     if OPT_plot:
         run('plot-model.py')
