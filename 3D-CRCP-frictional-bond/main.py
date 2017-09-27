@@ -15,8 +15,8 @@ def main():
         run('build-model.py')
 
     if OPT_run:
-        # run('run-analysis.py')
-        pass
+        run('run-analysis.py')
+        # pass
 
     if OPT_plot:
         run('plot-model.py')

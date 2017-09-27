@@ -288,6 +288,11 @@ mdl.parts['concslabPart'].SectionAssignment(offset=0.0,
     cells=mdl.parts['concslabPart'].cells.getSequenceFromMask(
     mask=('[#1 ]', ), )), sectionName='ConcSection', thicknessAssignment=
     FROM_SECTION)
+mdb.models['3D_CRCP_frictional'].parts['subbasePart'].SectionAssignment(
+    offset=0.0, offsetField='', offsetType=MIDDLE_SURFACE, region=Region(
+    cells=mdb.models['3D_CRCP_frictional'].parts['subbasePart'].cells.getSequenceFromMask(
+    mask=('[#1 ]', ), )), sectionName='SubbaseSection', thicknessAssignment=
+    FROM_SECTION)
 mdl.parts['loSteelbarPart'].SectionAssignment(offset=0.0,
     offsetField='', offsetType=MIDDLE_SURFACE, region=Region(
     cells=mdl.parts['loSteelbarPart'].cells.getSequenceFromMask(
@@ -551,7 +556,7 @@ mdl.Temperature(createStepName='Step-1',
 
 
 
-for part in ['concslabPart', 'loSteelbarPart', 'trSteelBarPart', 'subbasePart']:
+for part in ['concslabPart', 'loSteelbarPart', 'trSteelBarPart']:
     mdl.parts[part].seedPart(deviationFactor=0.1,
         minSizeFactor=0.1, size=38.1)
 
@@ -567,6 +572,11 @@ for part in ['concslabPart', 'loSteelbarPart', 'trSteelBarPart', 'subbasePart']:
         mdl.parts[part].cells.getSequenceFromMask(
         ('[#1 ]', ), ), ))
     mdl.parts[part].generateMesh()
+
+## mesh subbase
+mdl.parts['subbasePart'].seedPart(deviationFactor=0.1,
+    minSizeFactor=0.1, size=381)
+mdl.parts['subbasePart'].generateMesh()
 
 
 
