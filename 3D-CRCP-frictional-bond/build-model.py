@@ -412,7 +412,7 @@ for i, z_ori in enumerate(model_sbar_location_generator(model_depth, losbar_spac
         raise AbaqusException("ERROR: sbar surface set not found")
     mdl.SurfaceToSurfaceContactStd(adjustMethod=NONE,
         clearanceRegion=None, createStepName='Initial', datumAxis=None,
-        initialClearance=OMIT, interactionProperty=contact,
+        initialClearance=OMIT, interactionProperty='Conc-losbar-contact-prop',
         master=Region(side1Faces=mdl.rootAssembly.sets[conc_set].faces),
         slave=Region(side1Faces=mdl.rootAssembly.sets[sbar_set].faces),
         name='Conc-losbar-contact'+str(i+1), sliding=SMALL, thickness=ON)
@@ -441,7 +441,7 @@ for i, x_ori in enumerate(model_sbar_location_generator(model_width, trsbar_spac
         raise AbaqusException("ERROR: sbar surface set not found")
     mdl.SurfaceToSurfaceContactStd(adjustMethod=NONE,
         clearanceRegion=None, createStepName='Initial', datumAxis=None,
-        initialClearance=OMIT, interactionProperty=contact,
+        initialClearance=OMIT, interactionProperty='Conc-trsbar-contact-prop',
         master=Region(side1Faces=mdl.rootAssembly.sets[conc_set].faces),
         slave=Region(side1Faces=mdl.rootAssembly.sets[sbar_set].faces),
         name='Conc-trsbar-contact'+str(i+1), sliding=SMALL, thickness=ON)
