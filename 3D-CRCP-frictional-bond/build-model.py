@@ -270,6 +270,25 @@ mdl.rootAssembly.features.changeKey(fromName='trsbar-lin-2-1', toName='trsbar2')
 # mdl.rootAssembly.rotate(angle=90.0, axisDirection=(0.0, 150.0,
 #     0.0), axisPoint=(323.85, 304.8, 38.1), instanceList=('Wheel-1', ))
 
+
+
+# ##################################################
+# ##### CREATE DATUM PLANE FOR PARTITIONS
+# ##################################################
+offset = 25
+print('> Creating Datum Planes')
+mdl.parts['concslabPart'].DatumPlaneByPrincipalPlane(offset=rebar_height - offset
+	, principalPlane=XZPLANE)
+mdl.parts['concslabPart'].DatumPlaneByPrincipalPlane(offset=rebar_height + offset
+	, principalPlane=XZPLANE)
+#
+print('> Partitioning by datum plane')
+# ### Partition by datum plane
+for _,v in mdl.parts['concslabPart'].datums.items():
+	mdl.parts['concslabPart'].PartitionCellByDatumPlane(cells=
+		mdl.parts['concslabPart'].cells, datumPlane=v)
+
+
 ##################################################
 ##### ASSIGN SECTIONS
 ##################################################
