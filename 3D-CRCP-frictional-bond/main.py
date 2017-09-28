@@ -14,8 +14,8 @@ def main():
         DELETE_EXISTING_MODEL = True
         run('build-model.py')
 
-    if OPT_run:
-        run('run-analysis.py')
+    # if OPT_run:
+    #     run('run-analysis.py')
         # pass
 
     if OPT_plot:
