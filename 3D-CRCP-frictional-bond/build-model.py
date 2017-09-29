@@ -271,10 +271,9 @@ mdl.rootAssembly.features.changeKey(fromName='trsbar-lin-2-1', toName='trsbar2')
 #     0.0), axisPoint=(323.85, 304.8, 38.1), instanceList=('Wheel-1', ))
 
 
-
-# ##################################################
-# ##### CREATE DATUM PLANE FOR PARTITIONS
-# ##################################################
+##################################################
+##### CREATE DATUM PLANE FOR PARTITIONS
+##################################################
 offset = model_height/3/2
 print('> Creating Datum Planes')
 # up and down of steelbar
@@ -316,18 +315,19 @@ for i, z_ori in enumerate(model_sbar_location_generator(model_depth, losbar_spac
     # datums.append(mdl.parts['concslabPart'].DatumPlaneByPrincipalPlane(offset=x_ori + trsbar_diameter/2
 	#    , principalPlane=YZPLANE))
 #########################################################
-
+print('> Partitioning by datum plane')
 # convert fetaures to datum item
 datums = [mdl.parts['concslabPart'].datums[d.id] for d in datums]
 for d in datums:
 	mdl.parts['concslabPart'].PartitionCellByDatumPlane(cells=
 		mdl.parts['concslabPart'].cells.getByBoundingBox(
-            yMin=rebar_height - offset, yMax=rebar_height + offset), datumPlane=d)
+        yMin=rebar_height - offset, yMax=rebar_height + offset), datumPlane=d)
 
 
-#
-print('> Partitioning by datum plane')
-# ### Partition by datum plane
+
+
+
+
 
 
 
@@ -346,8 +346,8 @@ mdl.HomogeneousSolidSection(material='TrSteel', name=
     'trsbarSection', thickness=None)
 mdl.parts['concslabPart'].SectionAssignment(offset=0.0,
     offsetField='', offsetType=MIDDLE_SURFACE, region=Region(
-    cells=mdl.parts['concslabPart'].cells.getSequenceFromMask(
-    mask=('[#1 ]', ), )), sectionName='ConcSection', thicknessAssignment=
+    cells=mdl.parts['concslabPart'].cells),
+    sectionName='ConcSection', thicknessAssignment=
     FROM_SECTION)
 mdl.parts['subbasePart'].SectionAssignment(
     offset=0.0, offsetField='', offsetType=MIDDLE_SURFACE, region=Region(
@@ -421,19 +421,27 @@ for k in mdl.rootAssembly.instances.keys():
 mdl.rootAssembly.Set(name='sbarNodeSet_zMin', vertices=conArray(trsbarZMin_vertices), faces=conArray(trsbarZMin_faces))
 mdl.rootAssembly.Set(name='sbarNodeSet_zMax', vertices=conArray(trsbarZMax_vertices), faces=conArray(trsbarZMax_faces))
 
+
 ####### Create Surface set on all six faces
-faces = mdl.rootAssembly.instances['concslab'].faces.getByBoundingBox(xMax=0, xMin=0)
-mdl.rootAssembly.Set(name='SurfaceSet_xMin', faces=faces)
-faces = mdl.rootAssembly.instances['concslab'].faces.getByBoundingBox(xMax=model_width, xMin=model_width)
-mdl.rootAssembly.Set(name='SurfaceSet_xMax', faces=faces)
-faces = mdl.rootAssembly.instances['concslab'].faces.getByBoundingBox(yMax=0, yMin=0)
-mdl.rootAssembly.Set(name='SurfaceSet_yMin', faces=faces)
-faces = mdl.rootAssembly.instances['concslab'].faces.getByBoundingBox(yMax=model_height, yMin=model_height)
-mdl.rootAssembly.Set(name='SurfaceSet_yMax', faces=faces)
-faces = mdl.rootAssembly.instances['concslab'].faces.getByBoundingBox(zMax=0, zMin=0)
-mdl.rootAssembly.Set(name='SurfaceSet_zMin', faces=faces)
-faces = mdl.rootAssembly.instances['concslab'].faces.getByBoundingBox(zMax=model_depth, zMin=model_depth)
-mdl.rootAssembly.Set(name='SurfaceSet_zMax', faces=faces)
+for instance in ['concslab', 'subbase']:
+    faces = mdl.rootAssembly.instances[instance].faces.getByBoundingBox(xMax=0, xMin=0)
+    mdl.rootAssembly.Set(name=instance+'SurfaceSet_xMin', faces=faces)
+    faces = mdl.rootAssembly.instances[instance].faces.getByBoundingBox(xMax=model_width, xMin=model_width)
+    mdl.rootAssembly.Set(name=instance+'SurfaceSet_xMax', faces=faces)
+    faces = mdl.rootAssembly.instances[instance].faces.getByBoundingBox(zMax=0, zMin=0)
+    mdl.rootAssembly.Set(name=instance+'SurfaceSet_zMin', faces=faces)
+    faces = mdl.rootAssembly.instances[instance].faces.getByBoundingBox(zMax=model_depth, zMin=model_depth)
+    mdl.rootAssembly.Set(name=instance+'SurfaceSet_zMax', faces=faces)
+    if instance == 'concslab':
+        faces = mdl.rootAssembly.instances[instance].faces.getByBoundingBox(yMax=0, yMin=0)
+    elif instance == 'subbase':
+        faces = mdl.rootAssembly.instances[instance].faces.getByBoundingBox(yMax=-subbase_thickness, yMin=-subbase_thickness)
+    mdl.rootAssembly.Set(name=instance+'SurfaceSet_yMin', faces=faces)
+    if instance == 'concslab':
+        faces = mdl.rootAssembly.instances[instance].faces.getByBoundingBox(yMax=model_height, yMin=model_height)
+    elif instance == 'subbase':
+        faces = mdl.rootAssembly.instances[instance].faces.getByBoundingBox(yMax=0, yMin=0)
+    mdl.rootAssembly.Set(name=instance+'SurfaceSet_yMax', faces=faces)
 
 
 
@@ -530,9 +538,11 @@ mdl.interactionProperties['ConcSubbase-contact-prop'].CohesiveBehavior(
     defaultPenalties=OFF, table=((32027.1956, 236.4211, 236.4211), ))
 mdl.SurfaceToSurfaceContactStd(adjustMethod=NONE,
     clearanceRegion=None, createStepName='Initial', datumAxis=None,
-    initialClearance=OMIT, interactionProperty='ConcSubbase-contact-prop', master=Region(
-    side1Faces=concBottomFace), name='ConcSubbase-contact', slave=Region(
-    side1Faces=subbaseTopFace), sliding=SMALL, thickness=ON)
+    enforcement=NODE_TO_SURFACE,
+    initialClearance=OMIT, interactionProperty='ConcSubbase-contact-prop',
+    master=Region(side1Faces=subbaseTopFace),
+    slave=Region(side1Faces=concBottomFace),
+    name='ConcSubbase-contact', sliding=SMALL, thickness=ON)
 
 ##################################################
 ##### BOUNDARY CONDITION
@@ -541,8 +551,21 @@ print('> Defining Boundary Conditions')
 # conc
 mdl.DisplacementBC(amplitude=UNSET, createStepName='Initial',
     distributionType=UNIFORM, fieldName='', localCsys=None, name='FrontBC',
-    region=mdl.rootAssembly.sets['SurfaceSet_zMin'], u1=UNSET, u2=
+    region=mdl.rootAssembly.sets['concslabSurfaceSet_zMin'], u1=UNSET, u2=
     UNSET, u3=SET, ur1=UNSET, ur2=UNSET, ur3=UNSET)
+# subbase
+mdl.DisplacementBC(amplitude=UNSET, createStepName='Initial',
+    distributionType=UNIFORM, fieldName='', localCsys=None, name='SubbaseSideBC',
+    region=Region(faces=mdl.rootAssembly.sets['subbaseSurfaceSet_zMin'].faces+\
+    mdl.rootAssembly.sets['subbaseSurfaceSet_zMax'].faces+\
+    mdl.rootAssembly.sets['subbaseSurfaceSet_xMin'].faces+\
+    mdl.rootAssembly.sets['subbaseSurfaceSet_xMax'].faces)
+    , u1=SET, u2=
+    UNSET, u3=SET, ur1=SET, ur2=SET, ur3=SET)
+mdl.DisplacementBC(amplitude=UNSET, createStepName='Initial',
+    distributionType=UNIFORM, fieldName='', localCsys=None, name='SubbaseBottomBC',
+    region=mdl.rootAssembly.sets['subbaseSurfaceSet_yMin'],
+    u1=SET, u2=SET, u3=SET, ur1=SET, ur2=SET, ur3=SET)
 # losbar
 mdl.DisplacementBC(amplitude=UNSET, createStepName='Initial',
     distributionType=UNIFORM, fieldName='', localCsys=None, name='sbarXMinBC',
@@ -618,8 +641,11 @@ mdl.Temperature(createStepName='Step-1',
 
 
 for part in ['concslabPart', 'loSteelbarPart', 'trSteelBarPart']:
+    _factor = 1.0
+    if 'bar' in part:
+        _factor = sbar_mesh_size_factor
     mdl.parts[part].seedPart(deviationFactor=0.1,
-        minSizeFactor=0.1, size=38.1)
+        minSizeFactor=0.1, size=mesh_size * _factor)
 
     # mdl.parts[part].setMeshControls(
     #     elemShape=TET, regions=
@@ -632,7 +658,7 @@ for part in ['concslabPart', 'loSteelbarPart', 'trSteelBarPart']:
     #     regions=(
     #     mdl.parts[part].cells.getSequenceFromMask(
     #     ('[#1 ]', ), ), ))
-    # mdl.parts[part].generateMesh()
+    mdl.parts[part].generateMesh()
 
 ## mesh subbase
 mdl.parts['subbasePart'].seedPart(deviationFactor=0.1,

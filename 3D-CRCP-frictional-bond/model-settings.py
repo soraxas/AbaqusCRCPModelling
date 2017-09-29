@@ -14,7 +14,9 @@ losbar_diameter = 19.05
 trsbar_diameter = 15.875
 
 partition_size = 38.1
+mesh_size = 10
 mesh_size = 38.1
+sbar_mesh_size_factor = 0.8
 vertical_partition_size = 38.1
 
 losbar_spacing = 152.4
