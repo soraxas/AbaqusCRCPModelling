@@ -588,7 +588,21 @@ mdl.DisplacementBC(amplitude=UNSET, createStepName='Initial',
 ########## TEMPERATURE ################
 TEMP_REGION = Region(
 faces=mdl.rootAssembly.instances['concslab'].faces,
-cells=mdl.rootAssembly.instances['concslab'].cells,
+cells=mdl.rootAssembly.instances['concslab'].cells+\
+mdl.rootAssembly.instances['trsbar1'].cells+\
+mdl.rootAssembly.instances['trsbar2'].cells+\
+mdl.rootAssembly.instances['losbar1'].cells+\
+mdl.rootAssembly.instances['losbar2'].cells+\
+mdl.rootAssembly.instances['losbar3'].cells+\
+mdl.rootAssembly.instances['losbar4'].cells+\
+mdl.rootAssembly.instances['losbar5'].cells+\
+mdl.rootAssembly.instances['losbar6'].cells+\
+mdl.rootAssembly.instances['losbar7'].cells+\
+mdl.rootAssembly.instances['losbar8'].cells+\
+mdl.rootAssembly.instances['losbar9'].cells+\
+mdl.rootAssembly.instances['losbar10'].cells+\
+mdl.rootAssembly.instances['losbar11'].cells+\
+mdl.rootAssembly.instances['losbar12'].cells,
 edges=mdl.rootAssembly.instances['trsbar1'].edges+\
 mdl.rootAssembly.instances['trsbar2'].edges+\
 mdl.rootAssembly.instances['losbar1'].edges+\
