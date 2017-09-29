@@ -93,7 +93,7 @@ for dimension in [model_width, model_height, model_depth]:
             print(msg)
             raise AbaqusException(msg)
 
-
+rebar_height
 ##################################################
 ##### SETUP PART DIMENSIONS
 ##################################################
@@ -625,7 +625,7 @@ mdl.Temperature(createStepName='Initial',
     UNIFORM, magnitudes=(TEMP_INITIAL, ), name='Initial-temp', region=TEMP_REGION)
 mdl.StaticStep(name='Step-1', previous='Initial')
 
-expression = '(({0}-{1})/{2}*Y+{1})'.format(TEMP_BOTSURFACE, TEMP_TOPSURFACE, model_height)
+expression = '(({1}-{0})/{2}*Y+{0})'.format(TEMP_BOTSURFACE, TEMP_TOPSURFACE, model_height)
 mdl.ExpressionField(description=
     'The temperature gradient for concslab, from top surface as ', expression=
     expression, localCsys=None, name='Temperature Gradient of concslab')
