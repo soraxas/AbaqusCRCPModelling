@@ -171,42 +171,25 @@ mdl.materials['Concrete'].Elastic(table=((13780.0, 0.15), ))
 mdl.materials['Concrete'].Expansion(table=((1.08e-05, ), ))
 mdl.materials['Concrete'].Viscoelastic(domain=TIME, table=((
     0.45, 0.45, 48.0), ), time=PRONY)
-# mdl.materials['Concrete'].ConcreteDamagedPlasticity(table=((
-#     15, 0.1, 1.16, 0.67, 0.000001), ))
-# mdl.materials['Concrete'].concreteDamagedPlasticity.ConcreteCompressionHardening(
-#     table=((12.8, 0.0), (14.4, 6.59536e-05), (16.0, 0.00013498), (17.6,
-#     0.000207553), (19.2, 0.000284282), (20.8, 0.000365977), (22.4,
-#     0.000453748), (24.0, 0.000549193), (25.6, 0.000654766), (27.2,
-#     0.000774597), (28.8, 0.000916738), (30.4, 0.00110198), (32.0, 0.001549193),
-#     (30.4, 0.001686556), (28.8, 0.001823919), (27.2, 0.001961281), (25.6,
-#     0.002098644), (24.0, 0.002236007), (22.4, 0.002373369), (20.8,
-#     0.002510732), (19.2, 0.002648094), (17.6, 0.002785457), (16.0, 0.00292282),
-#     (14.4, 0.003060182), (12.8, 0.003197545), (11.2, 0.003334908), (9.6,
-#     0.00347227), (8.0, 0.003609633), (6.4, 0.003746996), (4.8, 0.003884358), (
-#     3.2, 0.004021721), (1.6, 0.004159083), (0.0, 0.004296446)))
-# mdl.materials['Concrete'].concreteDamagedPlasticity.ConcreteTensionStiffening(
-#     table=((3.39411255, 0.0), (3.00603442, 3.72112e-05), (2.755850108,
-#     7.44224e-05), (2.570196969, 0.000112761), (2.367909957, 0.000169142), (
-#     2.212216452, 0.000225522), (1.970719701, 0.000338284), (1.775816456,
-#     0.000451045), (1.604209964, 0.000563806), (1.445915903, 0.000676567), (
-#     1.295942111, 0.000789328), (1.151515165, 0.00090209), (1.010971011,
-#     0.001014851), (0.873250705, 0.001127612), (0.737648287, 0.001240373), (
-#     0.603675012, 0.001353135), (0.470981778, 0.001465896), (0.339312578,
-#     0.001578657), (0.208475405, 0.001691418), (0.07832343, 0.001804179)))
+mdl.materials['Concrete'].Density(table=((2.4e-6, ), ))
+
 
 # subbase
 mdl.Material(name='Subbase')
 mdl.materials['Subbase'].Elastic(table=((305, 0.35), ))
 mdl.materials['Subbase'].Expansion(table=((9e-06, ), ))
+mdl.materials['Subbase'].Density(table=((2.6e-6, ), ))
 
 # Steel
-mdl.Material(name='Steel')
-mdl.materials['Steel'].Elastic(table=((200000.0, 0.0), ))
-mdl.materials['Steel'].Expansion(table=((1.08e-05, ), ))
+mdl.Material(name='LoSteel')
+mdl.materials['LoSteel'].Elastic(table=((200000.0, 0.0), ))
+mdl.materials['LoSteel'].Expansion(table=((1.08e-05, ), ))
+mdl.materials['LoSteel'].Density(table=((7.85e-6, ), ))
 # TrSteel
 mdl.Material(name='TrSteel')
 mdl.materials['TrSteel'].Elastic(table=((200000.0, 0.0), ))
 mdl.materials['TrSteel'].Expansion(table=((1.08e-05, ), ))
+mdl.materials['TrSteel'].Density(table=((7.85e-6, ), ))
 
 
 ##################################################
@@ -340,7 +323,7 @@ mdl.HomogeneousSolidSection(material='Subbase', name=
     'SubbaseSection', thickness=None)
 mdl.HomogeneousSolidSection(material='Concrete', name=
     'ConcSection', thickness=None)
-mdl.HomogeneousSolidSection(material='Steel', name=
+mdl.HomogeneousSolidSection(material='LoSteel', name=
     'sbarSection', thickness=None)
 mdl.HomogeneousSolidSection(material='TrSteel', name=
     'trsbarSection', thickness=None)
@@ -445,104 +428,15 @@ for instance in ['concslab', 'subbase']:
 
 
 
-##################################################
-##### CONNECT CONCRETE TO SBAR SURFACES
-##################################################
-sbar_instances = [x for x in mdl.rootAssembly.instances.keys() if 'sbar' in x]
-
-mdl.ContactProperty('Conc-losbar-contact-prop')
-mdl.interactionProperties['Conc-losbar-contact-prop'].CohesiveBehavior(
-    eligibility=INITIAL_NODES,
-    defaultPenalties=OFF, table=((1e10, 190, 190), ))
-####
-mdl.ContactProperty('Conc-trsbar-contact-prop')
-mdl.interactionProperties['Conc-trsbar-contact-prop'].CohesiveBehavior(
-    eligibility=INITIAL_NODES,
-    defaultPenalties=OFF, table=((1e10, 190, 190), ))
-
-##########
-## face sets for frictional contact
-
-## For long-sbar
-instances = [k for k in mdl.rootAssembly.instances.keys() if k.startswith('losbar')]
-instances.append('concslab')
-for i, z_ori in enumerate(model_sbar_location_generator(model_depth, losbar_spacing)):
-    conc_set = None
-    sbar_set = None
-    for instance in instances:
-        faces = mdl.rootAssembly.instances[instance].faces.getByBoundingBox(
-            yMin=rebar_height-losbar_diameter, yMax=rebar_height+losbar_diameter,
-            zMin=z_ori-trsbar_diameter, zMax=z_ori+trsbar_diameter,
-            xMin=0, xMax=model_width
-            )
-        if len(faces) > 0:
-            set_name = 'losbar_face-'+instance+'-'+str(i+1)
-            mdl.rootAssembly.Set(name=set_name, faces=faces)
-            if instance == 'concslab':
-                conc_set = set_name
-            else:
-                sbar_set = set_name
-    if conc_set is None or sbar_set is None:
-        raise AbaqusException("ERROR: sbar surface set not found")
-    mdl.SurfaceToSurfaceContactStd(adjustMethod=NONE,
-        clearanceRegion=None, createStepName='Initial', datumAxis=None,
-        initialClearance=OMIT, interactionProperty='Conc-losbar-contact-prop',
-        master=Region(side1Faces=mdl.rootAssembly.sets[conc_set].faces),
-        slave=Region(side1Faces=mdl.rootAssembly.sets[sbar_set].faces),
-        name='Conc-losbar-contact'+str(i+1), sliding=SMALL, thickness=ON)
-
-
-## For tran-sbar
-instances = [k for k in mdl.rootAssembly.instances.keys() if k.startswith('trsbar')]
-instances.append('concslab')
-for i, x_ori in enumerate(model_sbar_location_generator(model_width, trsbar_spacing)):
-    conc_set = None
-    sbar_set = None
-    for instance in instances:
-        faces = mdl.rootAssembly.instances[instance].faces.getByBoundingBox(
-            yMin=rebar_height-trsbar_diameter, yMax=rebar_height+trsbar_diameter,
-            xMin=x_ori-trsbar_diameter, xMax=x_ori+trsbar_diameter,
-            zMin=0, zMax=model_depth
-            )
-        if len(faces) > 0:
-            set_name = 'losbar_face-'+instance+'-'+str(i+1)
-            mdl.rootAssembly.Set(name=set_name, faces=faces)
-            if instance == 'concslab':
-                conc_set = set_name
-            else:
-                sbar_set = set_name
-    if conc_set is None or sbar_set is None:
-        raise AbaqusException("ERROR: sbar surface set not found")
-    mdl.SurfaceToSurfaceContactStd(adjustMethod=NONE,
-        clearanceRegion=None, createStepName='Initial', datumAxis=None,
-        initialClearance=OMIT, interactionProperty='Conc-trsbar-contact-prop',
-        master=Region(side1Faces=mdl.rootAssembly.sets[conc_set].faces),
-        slave=Region(side1Faces=mdl.rootAssembly.sets[sbar_set].faces),
-        name='Conc-trsbar-contact'+str(i+1), sliding=SMALL, thickness=ON)
 
 
 
 ##################################################
-##### CONNECT CONCRETE TO SUBBASE
+##### SURFACE INTERACTION
 ##################################################
-concBottomFace = mdl.rootAssembly.instances['concslab'].faces.getByBoundingBox(
-    xMin=0, xMax=model_width,
-    zMin=0, zMax=model_depth,
-    yMin=0, yMax=0)
-subbaseTopFace = mdl.rootAssembly.instances['subbase'].faces.getByBoundingBox(
-    xMin=0, xMax=model_width,
-    zMin=0, zMax=model_depth,
-    yMin=0, yMax=0)
-mdl.ContactProperty('ConcSubbase-contact-prop')
-mdl.interactionProperties['ConcSubbase-contact-prop'].CohesiveBehavior(
-    defaultPenalties=OFF, table=((32027.1956, 236.4211, 236.4211), ))
-mdl.SurfaceToSurfaceContactStd(adjustMethod=NONE,
-    clearanceRegion=None, createStepName='Initial', datumAxis=None,
-    enforcement=NODE_TO_SURFACE,
-    initialClearance=OMIT, interactionProperty='ConcSubbase-contact-prop',
-    master=Region(side1Faces=subbaseTopFace),
-    slave=Region(side1Faces=concBottomFace),
-    name='ConcSubbase-contact', sliding=SMALL, thickness=ON)
+run('surface-contact-standard.py')
+# run('surface-contact-explicit.py')
+
 
 ##################################################
 ##### BOUNDARY CONDITION
@@ -637,7 +531,7 @@ mdl.rootAssembly.instances['losbar12'].vertices
 mdl.Temperature(createStepName='Initial',
     crossSectionDistribution=CONSTANT_THROUGH_THICKNESS, distributionType=
     UNIFORM, magnitudes=(TEMP_INITIAL, ), name='Initial-temp', region=TEMP_REGION)
-mdl.StaticStep(name='Step-1', previous='Initial')
+
 
 expression = '(({1}-{0})/{2}*Y+{0})'.format(TEMP_BOTSURFACE, TEMP_TOPSURFACE, model_height)
 mdl.ExpressionField(description=
