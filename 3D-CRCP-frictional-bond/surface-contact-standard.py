@@ -1,4 +1,4 @@
-mdl.StaticStep(name='Step-1', previous='Initial')
+mdl.StaticStep(name='Static-thermal', previous='Initial')
 
 ##################################################
 ##### CONNECT CONCRETE TO SBAR SURFACES
@@ -96,3 +96,13 @@ mdl.SurfaceToSurfaceContactStd(adjustMethod=NONE,
     master=Region(side1Faces=subbaseTopFace),
     slave=Region(side1Faces=concBottomFace),
     name='ConcSubbase-contact', sliding=SMALL, thickness=ON)
+
+################################################################################
+################################################################################
+################################################################################
+# Surpressing things to combine both model
+
+mdl.steps['Static-thermal'].suppress()
+
+for k in mdl.interactions.keys():
+    mdl.interactions[k].suppress()

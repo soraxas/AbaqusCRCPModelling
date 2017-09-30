@@ -1,6 +1,4 @@
-mdl.ExplicitDynamicsStep(name='Step-1', previous='Initial')
-
-
+mdl.ExplicitDynamicsStep(name='Explicit-Dynamic-Wheel', previous='Initial')
 
 ###########
 ## Define the explicit contact PROPERTIES and interaction to be used for every sbar surface pair
@@ -153,6 +151,16 @@ mdl.interactions['explicit_Cont'].masterSlaveAssignments.appendInStep(
 ################################################################################
 ################################################################################
 ################################################################################
-mdl.steps['Step-1'].setValues(massScaling=((
-    SEMI_AUTOMATIC, MODEL, THROUGHOUT_STEP, 0.0, 0.0001, BELOW_MIN, 1, 0, 0.0,
-    0.0, 0, None), ))
+# mdl.steps['Step-1'].setValues(massScaling=((
+#     SEMI_AUTOMATIC, MODEL, THROUGHOUT_STEP, 0.0, 0.0001, BELOW_MIN, 1, 0, 0.0,
+#     0.0, 0, None), ))
+
+################################################################################
+################################################################################
+################################################################################
+# Surpressing things to combine both model
+
+mdl.steps['Explicit-Dynamic-Wheel'].suppress()
+
+for k in mdl.interactions.keys():
+    mdl.interactions[k].suppress()

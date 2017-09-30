@@ -435,7 +435,7 @@ for instance in ['concslab', 'subbase']:
 ##### SURFACE INTERACTION
 ##################################################
 run('surface-contact-standard.py')
-# run('surface-contact-explicit.py')
+run('surface-contact-explicit.py')
 
 
 ##################################################
@@ -537,41 +537,15 @@ expression = '(({1}-{0})/{2}*Y+{0})'.format(TEMP_BOTSURFACE, TEMP_TOPSURFACE, mo
 mdl.ExpressionField(description=
     'The temperature gradient for concslab, from top surface as ', expression=
     expression, localCsys=None, name='Temperature Gradient of concslab')
-mdl.Temperature(createStepName='Step-1',
+mdl.Temperature(createStepName='Static-thermal',
     crossSectionDistribution=CONSTANT_THROUGH_THICKNESS, distributionType=FIELD
     , field='Temperature Gradient of concslab', magnitudes=(1, ), name='Conc-gradient-field',
     region=TEMP_REGION)
 
+# Save by Oscar on 2017_09_30-14.01.24; build 6.14-
+# exit()
 
 
-########## SEEDING MESH ################
-
-
-
-for part in ['concslabPart', 'loSteelbarPart', 'trSteelBarPart']:
-    _factor = 1.0
-    if 'bar' in part:
-        _factor = sbar_mesh_size_factor
-    mdl.parts[part].seedPart(deviationFactor=0.1,
-        minSizeFactor=0.1, size=mesh_size * _factor)
-
-    # mdl.parts[part].setMeshControls(
-    #     elemShape=TET, regions=
-    #     mdl.parts[part].cells.getSequenceFromMask(
-    #     ('[#1 ]', ), ), technique=FREE)
-    # mdl.parts[part].setElementType(elemTypes=
-    #     (ElemType(elemCode=UNKNOWN_HEX, elemLibrary=EXPLICIT), ElemType(
-    #     elemCode=UNKNOWN_WEDGE, elemLibrary=EXPLICIT), ElemType(elemCode=C3D10M,
-    #     elemLibrary=EXPLICIT, secondOrderAccuracy=OFF, distortionControl=DEFAULT)),
-    #     regions=(
-    #     mdl.parts[part].cells.getSequenceFromMask(
-    #     ('[#1 ]', ), ), ))
-    mdl.parts[part].generateMesh()
-
-## mesh subbase
-mdl.parts['subbasePart'].seedPart(deviationFactor=0.1,
-    minSizeFactor=0.1, size=381)
-mdl.parts['subbasePart'].generateMesh()
 
 
 
