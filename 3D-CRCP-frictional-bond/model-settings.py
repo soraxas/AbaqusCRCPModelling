@@ -10,6 +10,8 @@ model_width = 1828.8
 model_height = 304.8
 model_depth = 1828.8
 
+num_pavements = 3
+
 rebar_height = model_height/2
 losbar_diameter = 19.05
 trsbar_diameter = 15.875

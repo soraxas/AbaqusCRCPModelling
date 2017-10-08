@@ -1,3 +1,6 @@
+# build implicit dynamic step
+mdl.ImplicitDynamicsStep(name='Implicit-Dynamic-Wheel', previous=
+    'Static-thermal')
 
 wheel_diameter = 175
 offset_from_corner = 76.2 * 3
@@ -120,26 +123,32 @@ mdl.parts['concslabPart'].seedEdgeBySize(
 ####################################################
 ### Making surface for wheel contact
 ####################################################
-
-mdl.rootAssembly.Surface(name='Road Surface 1',
-    side1Faces=
-    mdl.rootAssembly.instances['concslab'].faces.getByBoundingBox(
+surfaces_road_1 = None
+surfaces_road_2 = None
+for instance in [i for i in mdl.rootAssembly.instances.keys() if i.startswith('concslab')]:
+    f1 = mdl.rootAssembly.instances[instance].faces.getByBoundingBox(
         yMin=model_height, yMax=model_height,
         zMin=offset_from_corner, zMax=offset_from_corner+width_of_road
-    ))
-mdl.rootAssembly.Surface(name='Road Surface 2',
-    side1Faces=
-    mdl.rootAssembly.instances['concslab'].faces.getByBoundingBox(
+    )
+    f2 = mdl.rootAssembly.instances[instance].faces.getByBoundingBox(
         yMin=model_height, yMax=model_height,
         zMin=model_depth - offset_from_corner - width_of_road, zMax=model_depth - offset_from_corner
-    ))
+    )
+    if f1:
+        surfaces_road_1 = array_append(surfaces_road_1, f1)
+    if f2:
+        surfaces_road_2 = array_append(surfaces_road_2, f2)
+mdl.rootAssembly.Surface(name='Road Surface 1',
+    side1Faces=surfaces_road_1)
+mdl.rootAssembly.Surface(name='Road Surface 2',
+    side1Faces=surfaces_road_2)
 
 
 ####################################################
 ### THESE ARE LEAVING IT AS IT IS FOR THE 'get sequence from mash'
 ####################################################
 
-mdl.rootAssembly.Surface(name='Wheel 1 Sruface',
+mdl.rootAssembly.Surface(name='Wheel 1 Surface',
     side1Faces=
     mdl.rootAssembly.instances['Wheel-1'].faces.getSequenceFromMask(
     ('[#3028330 ]', ), ))
@@ -157,20 +166,20 @@ mdl.interactionProperties['wheel-road-contProp'].TangentialBehavior(
 mdl.interactionProperties['wheel-road-contProp'].NormalBehavior(
     allowSeparation=ON, constraintEnforcementMethod=DEFAULT,
     pressureOverclosure=HARD)
-mdl.SurfaceToSurfaceContactExp(clearanceRegion=
-    None, createStepName='Initial', datumAxis=None, initialClearance=OMIT,
+mdl.SurfaceToSurfaceContactStd(adjustMethod=NONE, clearanceRegion=
+    None, createStepName='Implicit-Dynamic-Wheel', datumAxis=None, initialClearance=OMIT,
     interactionProperty='wheel-road-contProp', master=
     mdl.rootAssembly.surfaces['Road Surface 1'],
-    mechanicalConstraint=PENALTY, name='Road-Wheel-1', slave=
-    mdl.rootAssembly.surfaces['Wheel 1 Sruface'],
-    sliding=FINITE)
-mdl.SurfaceToSurfaceContactExp(clearanceRegion=
-    None, createStepName='Initial', datumAxis=None, initialClearance=OMIT,
+    name='Road-Wheel-1', slave=
+    mdl.rootAssembly.surfaces['Wheel 1 Surface'],
+    sliding=FINITE, thickness=ON)
+mdl.SurfaceToSurfaceContactStd(adjustMethod=NONE, clearanceRegion=
+    None, createStepName='Implicit-Dynamic-Wheel', datumAxis=None, initialClearance=OMIT,
     interactionProperty='wheel-road-contProp', master=
     mdl.rootAssembly.surfaces['Road Surface 2'],
-    mechanicalConstraint=PENALTY, name='Road-Wheel-2', slave=
+    name='Road-Wheel-2', slave=
     mdl.rootAssembly.surfaces['Wheel 2 Surface'],
-    sliding=FINITE)
+    sliding=FINITE, thickness=ON)
 
 
 Wheel_1_datum = mdl.rootAssembly.DatumCsysByThreePoints(
@@ -198,12 +207,12 @@ mdl.Coupling(controlPoint=Region(
     mask=('[#fcfc330 ]', ), )), u1=ON, u2=ON, u3=ON, ur1=ON, ur2=ON, ur3=ON)
 
 mdl.ConcentratedForce(cf2=wheel_concentrated_force,
-    createStepName='Explicit-Dynamic-Wheel', distributionType=UNIFORM, field='', localCsys=None
+    createStepName='Implicit-Dynamic-Wheel', distributionType=UNIFORM, field='', localCsys=None
     , name='Load-1', region=Region(
     vertices=mdl.rootAssembly.instances['Wheel-1'].vertices.getSequenceFromMask(
     mask=('[#2 ]', ), )))
 mdl.ConcentratedForce(cf2=wheel_concentrated_force,
-    createStepName='Explicit-Dynamic-Wheel', distributionType=UNIFORM, field='', localCsys=None
+    createStepName='Implicit-Dynamic-Wheel', distributionType=UNIFORM, field='', localCsys=None
     , name='Load-2', region=Region(
     vertices=mdl.rootAssembly.instances['Wheel-2'].vertices.getSequenceFromMask(
     mask=('[#2 ]', ), )))
@@ -230,4 +239,4 @@ mdl.Velocity(distributionType=MAGNITUDE, field='',
 
 ####################################################
 
-mdl.steps['Explicit-Dynamic-Wheel'].suppress()
+# mdl.steps['Implicit-Dynamic-Wheel'].suppress()

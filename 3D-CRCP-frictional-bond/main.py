@@ -3,10 +3,6 @@ SCRIPT_PATH_DIRECTORY = r"C:\Users\Oscar\GIT\3D-CRCP-frictional-bond/"
 # For example, "C:\Users\Oscar\GIT/"
 ##############################################################
 def main():
-    import ctypes
-    MessageBox = ctypes.windll.user32.MessageBoxA
-    MessageBox(None, 'Hello', 'Window title', 0)
-    exit()
     global OPT_build, OPT_run, OPT_plot, OPT_save_plot
 
     # run('build-wheel.py')

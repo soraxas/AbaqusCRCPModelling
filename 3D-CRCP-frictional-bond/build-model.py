@@ -77,6 +77,11 @@ def model_sbar_location_generator(dimension, spacing):
     # return the location of sbar that lies within the model.
     return (spacing/2+x*spacing for x in range(int(1+(dimension-spacing/2)/spacing)))
 
+def array_append(array, new_item):
+    if array is None:
+        return new_item
+    else:
+        return array + new_item
 ################################################################################
 
 
@@ -134,7 +139,7 @@ del mdl.sketches['__profile__']
 # subbase
 mdl.ConstrainedSketch(name='__profile__', sheetSize=3000.0)
 mdl.sketches['__profile__'].rectangle(point1=(0.0, 0.0),
-    point2=(model_width, subbase_thickness))
+    point2=(model_width * num_pavements, subbase_thickness))
 mdl.Part(dimensionality=THREE_D, name='subbasePart', type=
     DEFORMABLE_BODY)
 mdl.parts['subbasePart'].BaseSolidExtrude(depth=model_depth, sketch=
@@ -146,7 +151,7 @@ mdl.sketches['__profile__'].CircleByCenterPerimeter(center=(
     0.0, 0.0), point1=(losbar_diameter/2, 0.0))
 mdl.Part(dimensionality=THREE_D, name='loSteelbarPart', type=
     DEFORMABLE_BODY)
-mdl.parts['loSteelbarPart'].BaseSolidExtrude(depth=model_width, sketch=
+mdl.parts['loSteelbarPart'].BaseSolidExtrude(depth=model_width * num_pavements, sketch=
     mdl.sketches['__profile__'])
 del mdl.sketches['__profile__']
 # Transverse Steel bar
@@ -213,13 +218,13 @@ mdl.rootAssembly.translate(instanceList=('subbase', ),
     vector=(0.0, -subbase_thickness, 0))
 ### Lognitudial steel bar
 mdl.rootAssembly.rotate(angle=270.0, axisDirection=(0.0,
-    model_height, 0.0), axisPoint=(model_width, 0.0, 0.0), instanceList=('losbar', ))
+    model_height, 0.0), axisPoint=(model_width * num_pavements , 0.0, 0.0), instanceList=('losbar', ))
 mdl.rootAssembly.translate(instanceList=('losbar', ),
-    vector=(0.0, rebar_height, model_width+losbar_spacing/2))
+    vector=(0.0, rebar_height, model_width * num_pavements + losbar_spacing/2))
 # clone by increments
 mdl.rootAssembly.LinearInstancePattern(direction1=(-1.0, 0.0,
     0.0), direction2=(0.0, 0.0, 1.0), instanceList=('losbar', ), number1=1,
-    number2=12, spacing1=model_width, spacing2=losbar_spacing)
+    number2=12, spacing1=0, spacing2=losbar_spacing)
 # rename to better names
 mdl.rootAssembly.features.changeKey(fromName='losbar', toName='losbar1')
 mdl.rootAssembly.features.changeKey(fromName='losbar-lin-1-2', toName='losbar2')
@@ -251,64 +256,69 @@ mdl.rootAssembly.features.changeKey(fromName='trsbar-lin-2-1', toName='trsbar2')
 #     0.0), axisPoint=(323.85, 304.8, 38.1), instanceList=('Wheel-1', ))
 
 
-##################################################
-##### CREATE DATUM PLANE FOR PARTITIONS
-##################################################
-offset = model_height/3/2
-print('> Creating Datum Planes')
-# up and down of steelbar
-mdl.parts['concslabPart'].DatumPlaneByPrincipalPlane(offset=rebar_height - offset
-	, principalPlane=XZPLANE)
-mdl.parts['concslabPart'].DatumPlaneByPrincipalPlane(offset=rebar_height + offset
-	, principalPlane=XZPLANE)
-mdl.parts['concslabPart'].DatumPlaneByPrincipalPlane(offset=rebar_height
-	, principalPlane=XZPLANE)
-
-for _,v in mdl.parts['concslabPart'].datums.items():
-	mdl.parts['concslabPart'].PartitionCellByDatumPlane(cells=
-		mdl.parts['concslabPart'].cells, datumPlane=v)
-
-datums = []
-# left and right of steelbar
-for i, x_ori in enumerate(model_sbar_location_generator(model_width, trsbar_spacing)):
-    datums.append(mdl.parts['concslabPart'].DatumPlaneByPrincipalPlane(offset=x_ori - offset
-	   , principalPlane=YZPLANE))
-    datums.append(mdl.parts['concslabPart'].DatumPlaneByPrincipalPlane(offset=x_ori + offset
-	   , principalPlane=YZPLANE))
-    datums.append(mdl.parts['concslabPart'].DatumPlaneByPrincipalPlane(offset=x_ori
-	   , principalPlane=YZPLANE))
-
-for i, z_ori in enumerate(model_sbar_location_generator(model_depth, losbar_spacing)):
-    datums.append(mdl.parts['concslabPart'].DatumPlaneByPrincipalPlane(offset=z_ori - offset
-	   , principalPlane=XYPLANE))
-    datums.append(mdl.parts['concslabPart'].DatumPlaneByPrincipalPlane(offset=z_ori + offset
-	   , principalPlane=XYPLANE))
-    datums.append(mdl.parts['concslabPart'].DatumPlaneByPrincipalPlane(offset=z_ori
-	   , principalPlane=XYPLANE))
-
-
-#########################################################
-# partition directly next to hole
+# ##################################################
+# ##### CREATE DATUM PLANE FOR PARTITIONS
+# ##################################################
+# offset = model_height/3/2
+# print('> Creating Datum Planes')
+# # up and down of steelbar
+# mdl.parts['concslabPart'].DatumPlaneByPrincipalPlane(offset=rebar_height - offset
+# 	, principalPlane=XZPLANE)
+# mdl.parts['concslabPart'].DatumPlaneByPrincipalPlane(offset=rebar_height + offset
+# 	, principalPlane=XZPLANE)
+# mdl.parts['concslabPart'].DatumPlaneByPrincipalPlane(offset=rebar_height
+# 	, principalPlane=XZPLANE)
+#
+# for _,v in mdl.parts['concslabPart'].datums.items():
+# 	mdl.parts['concslabPart'].PartitionCellByDatumPlane(cells=
+# 		mdl.parts['concslabPart'].cells, datumPlane=v)
+#
+# datums = []
+# # left and right of steelbar
 # for i, x_ori in enumerate(model_sbar_location_generator(model_width, trsbar_spacing)):
+#     datums.append(mdl.parts['concslabPart'].DatumPlaneByPrincipalPlane(offset=x_ori - offset
+# 	   , principalPlane=YZPLANE))
+#     datums.append(mdl.parts['concslabPart'].DatumPlaneByPrincipalPlane(offset=x_ori + offset
+# 	   , principalPlane=YZPLANE))
 #     datums.append(mdl.parts['concslabPart'].DatumPlaneByPrincipalPlane(offset=x_ori
 # 	   , principalPlane=YZPLANE))
-    # datums.append(mdl.parts['concslabPart'].DatumPlaneByPrincipalPlane(offset=x_ori + trsbar_diameter/2
-	#    , principalPlane=YZPLANE))
-#########################################################
-print('> Partitioning by datum plane')
-# convert fetaures to datum item
-datums = [mdl.parts['concslabPart'].datums[d.id] for d in datums]
-for d in datums:
-	mdl.parts['concslabPart'].PartitionCellByDatumPlane(cells=
-		mdl.parts['concslabPart'].cells.getByBoundingBox(
-        yMin=rebar_height - offset, yMax=rebar_height + offset), datumPlane=d)
+#
+# for i, z_ori in enumerate(model_sbar_location_generator(model_depth, losbar_spacing)):
+#     datums.append(mdl.parts['concslabPart'].DatumPlaneByPrincipalPlane(offset=z_ori - offset
+# 	   , principalPlane=XYPLANE))
+#     datums.append(mdl.parts['concslabPart'].DatumPlaneByPrincipalPlane(offset=z_ori + offset
+# 	   , principalPlane=XYPLANE))
+#     datums.append(mdl.parts['concslabPart'].DatumPlaneByPrincipalPlane(offset=z_ori
+# 	   , principalPlane=XYPLANE))
+#
+#
+# #########################################################
+# # partition directly next to hole
+# # for i, x_ori in enumerate(model_sbar_location_generator(model_width, trsbar_spacing)):
+# #     datums.append(mdl.parts['concslabPart'].DatumPlaneByPrincipalPlane(offset=x_ori
+# # 	   , principalPlane=YZPLANE))
+#     # datums.append(mdl.parts['concslabPart'].DatumPlaneByPrincipalPlane(offset=x_ori + trsbar_diameter/2
+# 	#    , principalPlane=YZPLANE))
+# #########################################################
+# print('> Partitioning by datum plane')
+# # convert fetaures to datum item
+# datums = [mdl.parts['concslabPart'].datums[d.id] for d in datums]
+# for d in datums:
+# 	mdl.parts['concslabPart'].PartitionCellByDatumPlane(cells=
+# 		mdl.parts['concslabPart'].cells.getByBoundingBox(
+#         yMin=rebar_height - offset, yMax=rebar_height + offset), datumPlane=d)
 
 
 
 
 
-
-
+##################################################
+##### LINEAR PATTERNS FOR MULTIPLE PAVEMENT SLABS
+##################################################
+if num_pavements > 1:
+    mdl.rootAssembly.LinearInstancePattern(direction1=(1.0, 0.0, 0.0),
+        direction2=(0.0, 1.0, 0.0), instanceList=('concslab', 'trsbar1', 'trsbar2'),
+        number1=num_pavements, number2=1, spacing1=model_width, spacing2=0)
 
 
 ##################################################
@@ -353,26 +363,45 @@ mdl.parts['trSteelBarPart'].SectionAssignment(offset=0.0,
 ##################################################
 print('> Defining Sets')
 #### make each surfacec in y axis as node set
-lvl = model_height
-j = 0
-while lvl >= 0:
-    vertices = mdl.rootAssembly.instances['concslab'].vertices.getByBoundingBox(yMax=lvl, yMin=lvl)
-    mdl.rootAssembly.Set(name='NodeSetLvl_'+str(j), vertices=vertices)
-    j += 1
-    lvl -= partition_size
-    lvl = round(lvl,10) # force rounding
+# lvl = model_height
+# j = 0
+# while lvl >= 0:
+#     vertices = mdl.rootAssembly.instances['concslab'].vertices.getByBoundingBox(yMax=lvl, yMin=lvl)
+#     mdl.rootAssembly.Set(name='NodeSetLvl_'+str(j), vertices=vertices)
+#     j += 1
+#     lvl -= partition_size
+#     lvl = round(lvl,10) # force rounding
 
-
+combinations = [('xMin', {'xMin':0, 'xMax':0}), \
+                ('xMax', {'xMin':model_width*num_pavements, 'xMax':model_width*num_pavements}), \
+                ('zMin', {'zMin':0, 'zMax':0}), \
+                ('zMax', {'zMin':model_depth, 'zMax':model_depth}) ]
 
 # create the other four side node set
-vertices = mdl.rootAssembly.instances['concslab'].vertices.getByBoundingBox(xMax=0, xMin=0)
-mdl.rootAssembly.Set(name='NodeSet_xMin', vertices=vertices)
-vertices = mdl.rootAssembly.instances['concslab'].vertices.getByBoundingBox(xMax=model_width, xMin=model_width)
-mdl.rootAssembly.Set(name='NodeSet_xMax', vertices=vertices)
-vertices = mdl.rootAssembly.instances['concslab'].vertices.getByBoundingBox(zMax=0, zMin=0)
-mdl.rootAssembly.Set(name='NodeSet_zMin', vertices=vertices)
-vertices = mdl.rootAssembly.instances['concslab'].vertices.getByBoundingBox(zMax=model_depth, zMin=model_depth)
-mdl.rootAssembly.Set(name='NodeSet_zMax', vertices=vertices)
+for combination in combinations:
+    vertices = None
+    faces    = None
+    for k in mdl.rootAssembly.instances.keys():
+        if k.startswith('concslab'):
+            vertices = array_append(vertices, mdl.rootAssembly.instances[k].vertices.getByBoundingBox( **combination[1] ))
+            faces = array_append(faces, mdl.rootAssembly.instances[k].faces.getByBoundingBox( **combination[1] ))
+    mdl.rootAssembly.Set(name='concslabSurfaceSet_'+combination[0], faces=faces)
+    mdl.rootAssembly.Set(name='concslabNodeSet_'+combination[0], vertices=vertices)
+
+
+####### Create Surface set on all six faces for subbase
+faces = mdl.rootAssembly.instances['subbase'].faces.getByBoundingBox(xMax=0, xMin=0)
+mdl.rootAssembly.Set(name='subbaseSurfaceSet_xMin', faces=faces)
+faces = mdl.rootAssembly.instances['subbase'].faces.getByBoundingBox(xMax=model_width*num_pavements, xMin=model_width*num_pavements)
+mdl.rootAssembly.Set(name='subbaseSurfaceSet_xMax', faces=faces)
+faces = mdl.rootAssembly.instances['subbase'].faces.getByBoundingBox(zMax=0, zMin=0)
+mdl.rootAssembly.Set(name='subbaseSurfaceSet_zMin', faces=faces)
+faces = mdl.rootAssembly.instances['subbase'].faces.getByBoundingBox(zMax=model_depth, zMin=model_depth)
+mdl.rootAssembly.Set(name='subbaseSurfaceSet_zMax', faces=faces)
+faces = mdl.rootAssembly.instances['subbase'].faces.getByBoundingBox(yMax=-subbase_thickness, yMin=-subbase_thickness)
+mdl.rootAssembly.Set(name='subbaseSurfaceSet_yMin', faces=faces)
+faces = mdl.rootAssembly.instances['subbase'].faces.getByBoundingBox(yMax=0, yMin=0)
+mdl.rootAssembly.Set(name='subbaseSurfaceSet_yMax', faces=faces)
 
 ## create the steel bar node set
 losbarXMin_faces = []
@@ -384,7 +413,7 @@ for k in mdl.rootAssembly.instances.keys():
         losbarXMin_faces.append(mdl.rootAssembly.instances[k].faces.getByBoundingBox(xMax=0, xMin=0))
         losbarXMax_faces.append(mdl.rootAssembly.instances[k].faces.getByBoundingBox(xMax=model_width, xMin=model_width))
         losbarXMin_vertices.append(mdl.rootAssembly.instances[k].vertices.getByBoundingBox(xMax=0, xMin=0))
-        losbarXMax_vertices.append(mdl.rootAssembly.instances[k].vertices.getByBoundingBox(xMax=model_width, xMin=model_width))
+        losbarXMax_vertices.append(mdl.rootAssembly.instances[k].vertices.getByBoundingBox(xMax=model_width*num_pavements, xMin=model_width*num_pavements))
 mdl.rootAssembly.Set(name='sbarNodeSet_xMin', vertices=conArray(losbarXMin_vertices), faces=conArray(losbarXMin_faces))
 mdl.rootAssembly.Set(name='sbarNodeSet_xMax', vertices=conArray(losbarXMax_vertices), faces=conArray(losbarXMax_faces))
 
@@ -402,26 +431,7 @@ mdl.rootAssembly.Set(name='sbarNodeSet_zMin', vertices=conArray(trsbarZMin_verti
 mdl.rootAssembly.Set(name='sbarNodeSet_zMax', vertices=conArray(trsbarZMax_vertices), faces=conArray(trsbarZMax_faces))
 
 
-####### Create Surface set on all six faces
-for instance in ['concslab', 'subbase']:
-    faces = mdl.rootAssembly.instances[instance].faces.getByBoundingBox(xMax=0, xMin=0)
-    mdl.rootAssembly.Set(name=instance+'SurfaceSet_xMin', faces=faces)
-    faces = mdl.rootAssembly.instances[instance].faces.getByBoundingBox(xMax=model_width, xMin=model_width)
-    mdl.rootAssembly.Set(name=instance+'SurfaceSet_xMax', faces=faces)
-    faces = mdl.rootAssembly.instances[instance].faces.getByBoundingBox(zMax=0, zMin=0)
-    mdl.rootAssembly.Set(name=instance+'SurfaceSet_zMin', faces=faces)
-    faces = mdl.rootAssembly.instances[instance].faces.getByBoundingBox(zMax=model_depth, zMin=model_depth)
-    mdl.rootAssembly.Set(name=instance+'SurfaceSet_zMax', faces=faces)
-    if instance == 'concslab':
-        faces = mdl.rootAssembly.instances[instance].faces.getByBoundingBox(yMax=0, yMin=0)
-    elif instance == 'subbase':
-        faces = mdl.rootAssembly.instances[instance].faces.getByBoundingBox(yMax=-subbase_thickness, yMin=-subbase_thickness)
-    mdl.rootAssembly.Set(name=instance+'SurfaceSet_yMin', faces=faces)
-    if instance == 'concslab':
-        faces = mdl.rootAssembly.instances[instance].faces.getByBoundingBox(yMax=model_height, yMin=model_height)
-    elif instance == 'subbase':
-        faces = mdl.rootAssembly.instances[instance].faces.getByBoundingBox(yMax=0, yMin=0)
-    mdl.rootAssembly.Set(name=instance+'SurfaceSet_yMax', faces=faces)
+
 
 
 
@@ -432,7 +442,7 @@ for instance in ['concslab', 'subbase']:
 ##### SURFACE INTERACTION
 ##################################################
 run('surface-contact-standard.py')
-run('surface-contact-explicit.py')
+# run('surface-contact-explicit.py')
 
 
 ##################################################
@@ -477,52 +487,21 @@ mdl.DisplacementBC(amplitude=UNSET, createStepName='Initial',
 
 
 ########## TEMPERATURE ################
+faces = None
+cells = None
+edges = None
+vertices = None
+for k in mdl.rootAssembly.instances.keys():
+    faces = array_append(faces, mdl.rootAssembly.instances[k].faces)
+    cells = array_append(cells, mdl.rootAssembly.instances[k].cells)
+    edges = array_append(edges, mdl.rootAssembly.instances[k].edges)
+    vertices = array_append(vertices, mdl.rootAssembly.instances[k].vertices)
+
 TEMP_REGION = Region(
-faces=mdl.rootAssembly.instances['concslab'].faces,
-cells=mdl.rootAssembly.instances['concslab'].cells+\
-mdl.rootAssembly.instances['trsbar1'].cells+\
-mdl.rootAssembly.instances['trsbar2'].cells+\
-mdl.rootAssembly.instances['losbar1'].cells+\
-mdl.rootAssembly.instances['losbar2'].cells+\
-mdl.rootAssembly.instances['losbar3'].cells+\
-mdl.rootAssembly.instances['losbar4'].cells+\
-mdl.rootAssembly.instances['losbar5'].cells+\
-mdl.rootAssembly.instances['losbar6'].cells+\
-mdl.rootAssembly.instances['losbar7'].cells+\
-mdl.rootAssembly.instances['losbar8'].cells+\
-mdl.rootAssembly.instances['losbar9'].cells+\
-mdl.rootAssembly.instances['losbar10'].cells+\
-mdl.rootAssembly.instances['losbar11'].cells+\
-mdl.rootAssembly.instances['losbar12'].cells,
-edges=mdl.rootAssembly.instances['trsbar1'].edges+\
-mdl.rootAssembly.instances['trsbar2'].edges+\
-mdl.rootAssembly.instances['losbar1'].edges+\
-mdl.rootAssembly.instances['losbar2'].edges+\
-mdl.rootAssembly.instances['losbar3'].edges+\
-mdl.rootAssembly.instances['losbar4'].edges+\
-mdl.rootAssembly.instances['losbar5'].edges+\
-mdl.rootAssembly.instances['losbar6'].edges+\
-mdl.rootAssembly.instances['losbar7'].edges+\
-mdl.rootAssembly.instances['losbar8'].edges+\
-mdl.rootAssembly.instances['losbar9'].edges+\
-mdl.rootAssembly.instances['losbar10'].edges+\
-mdl.rootAssembly.instances['losbar11'].edges+\
-mdl.rootAssembly.instances['losbar12'].edges,
-vertices=mdl.rootAssembly.instances['concslab'].vertices+\
-mdl.rootAssembly.instances['trsbar1'].vertices+\
-mdl.rootAssembly.instances['trsbar2'].vertices+\
-mdl.rootAssembly.instances['losbar1'].vertices+\
-mdl.rootAssembly.instances['losbar2'].vertices+\
-mdl.rootAssembly.instances['losbar3'].vertices+\
-mdl.rootAssembly.instances['losbar4'].vertices+\
-mdl.rootAssembly.instances['losbar5'].vertices+\
-mdl.rootAssembly.instances['losbar6'].vertices+\
-mdl.rootAssembly.instances['losbar7'].vertices+\
-mdl.rootAssembly.instances['losbar8'].vertices+\
-mdl.rootAssembly.instances['losbar9'].vertices+\
-mdl.rootAssembly.instances['losbar10'].vertices+\
-mdl.rootAssembly.instances['losbar11'].vertices+\
-mdl.rootAssembly.instances['losbar12'].vertices
+faces=faces,
+cells=cells,
+edges=edges,
+vertices=vertices
 )
 
 mdl.Temperature(createStepName='Initial',
