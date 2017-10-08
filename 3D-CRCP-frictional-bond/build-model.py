@@ -102,8 +102,7 @@ mdl.ConstrainedSketch(name='__profile__', sheetSize=3000.0)
 mdl.sketches['__profile__'].rectangle(point1=(0.0, 0.0),
     point2=(model_width, model_height))
 # trsbar hollow
-for i in range(int(model_width/trsbar_spacing) + 1):
-	x = trsbar_spacing/2 + trsbar_spacing * i
+for x in model_sbar_location_generator(model_width, trsbar_spacing):
 	y_offset = trsbar_diameter/2
 	y = model_height/2
 	mdl.sketches['__profile__'].CircleByCenterPerimeter(center=(
@@ -122,8 +121,7 @@ mdl.ConstrainedSketch(gridSpacing=119.99, name='__profile__',
     sketchOrientation=RIGHT, origin=(1524.0, 0, model_depth)))
 mdl.parts['concslabPart'].projectReferencesOntoSketch(filter=
     COPLANAR_EDGES, sketch=mdl.sketches['__profile__'])
-for i in range(int(model_depth/losbar_spacing)):
-	x = losbar_spacing/2 + losbar_spacing * i
+for x in model_sbar_location_generator(model_depth, losbar_spacing):
 	y = model_height/2
 	mdl.sketches['__profile__'].CircleByCenterPerimeter(center=(
 		x, y), point1=(x + losbar_diameter/2, y))
@@ -207,7 +205,6 @@ mdl.rootAssembly.Instance(dependent=ON, name='trsbar',
     part=mdl.parts['trSteelBarPart'])
 # mdl.rootAssembly.Instance(dependent=ON, name='wheel-1',
 #     part=mdl.parts['wheelPart'])
-
 ##################################################
 ##### TRANSLATE INSTANCES TO CORRECT POS
 ##################################################
@@ -218,11 +215,11 @@ mdl.rootAssembly.translate(instanceList=('subbase', ),
 mdl.rootAssembly.rotate(angle=270.0, axisDirection=(0.0,
     model_height, 0.0), axisPoint=(model_width, 0.0, 0.0), instanceList=('losbar', ))
 mdl.rootAssembly.translate(instanceList=('losbar', ),
-    vector=(0.0, 152.4, 1600.2))
+    vector=(0.0, rebar_height, model_width+losbar_spacing/2))
 # clone by increments
 mdl.rootAssembly.LinearInstancePattern(direction1=(-1.0, 0.0,
     0.0), direction2=(0.0, 0.0, 1.0), instanceList=('losbar', ), number1=1,
-    number2=12, spacing1=model_width, spacing2=152.4)
+    number2=12, spacing1=model_width, spacing2=losbar_spacing)
 # rename to better names
 mdl.rootAssembly.features.changeKey(fromName='losbar', toName='losbar1')
 mdl.rootAssembly.features.changeKey(fromName='losbar-lin-1-2', toName='losbar2')
@@ -238,11 +235,11 @@ mdl.rootAssembly.features.changeKey(fromName='losbar-lin-1-11', toName='losbar11
 mdl.rootAssembly.features.changeKey(fromName='losbar-lin-1-12', toName='losbar12')
 ### Transverse steel bar
 mdl.rootAssembly.instances['trsbar'].translate(vector=(
-    1371.6, 152.4, 0.0))
+    model_depth-trsbar_spacing/2, rebar_height, 0.0))
 # clone by increments
 mdl.rootAssembly.LinearInstancePattern(direction1=(-1.0, 0.0,
     0.0), direction2=(0.0, 1.0, 0.0), instanceList=('trsbar', ), number1=2,
-    number2=1, spacing1=914.4, spacing2=1.0)
+    number2=1, spacing1=trsbar_spacing, spacing2=1.0)
 # rename to better names
 mdl.rootAssembly.features.changeKey(fromName='trsbar', toName='trsbar1')
 mdl.rootAssembly.features.changeKey(fromName='trsbar-lin-2-1', toName='trsbar2')

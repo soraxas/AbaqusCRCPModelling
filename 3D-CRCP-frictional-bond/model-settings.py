@@ -5,7 +5,8 @@ STIFFNESS_BASE_VALUE = 38.1 # This is what our stiffness value is based upon. If
                             # is changed, the stiffness value will be changed proportionally
                             # so the value will be correct
 model_name = '3D_CRCP_frictional'
-model_width = 1524.0
+# model_width = 1524.0
+model_width = 1828.8
 model_height = 304.8
 model_depth = 1828.8
 
