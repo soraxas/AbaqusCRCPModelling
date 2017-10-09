@@ -256,57 +256,57 @@ mdl.rootAssembly.features.changeKey(fromName='trsbar-lin-2-1', toName='trsbar2')
 #     0.0), axisPoint=(323.85, 304.8, 38.1), instanceList=('Wheel-1', ))
 
 
-# ##################################################
-# ##### CREATE DATUM PLANE FOR PARTITIONS
-# ##################################################
-# offset = model_height/3/2
-# print('> Creating Datum Planes')
-# # up and down of steelbar
-# mdl.parts['concslabPart'].DatumPlaneByPrincipalPlane(offset=rebar_height - offset
-# 	, principalPlane=XZPLANE)
-# mdl.parts['concslabPart'].DatumPlaneByPrincipalPlane(offset=rebar_height + offset
-# 	, principalPlane=XZPLANE)
-# mdl.parts['concslabPart'].DatumPlaneByPrincipalPlane(offset=rebar_height
-# 	, principalPlane=XZPLANE)
-#
-# for _,v in mdl.parts['concslabPart'].datums.items():
-# 	mdl.parts['concslabPart'].PartitionCellByDatumPlane(cells=
-# 		mdl.parts['concslabPart'].cells, datumPlane=v)
-#
-# datums = []
-# # left and right of steelbar
+##################################################
+##### CREATE DATUM PLANE FOR PARTITIONS
+##################################################
+offset = model_height/3/2
+print('> Creating Datum Planes')
+# up and down of steelbar
+mdl.parts['concslabPart'].DatumPlaneByPrincipalPlane(offset=rebar_height - offset
+	, principalPlane=XZPLANE)
+mdl.parts['concslabPart'].DatumPlaneByPrincipalPlane(offset=rebar_height + offset
+	, principalPlane=XZPLANE)
+mdl.parts['concslabPart'].DatumPlaneByPrincipalPlane(offset=rebar_height
+	, principalPlane=XZPLANE)
+
+for _,v in mdl.parts['concslabPart'].datums.items():
+	mdl.parts['concslabPart'].PartitionCellByDatumPlane(cells=
+		mdl.parts['concslabPart'].cells, datumPlane=v)
+
+datums = []
+# left and right of steelbar
+for i, x_ori in enumerate(model_sbar_location_generator(model_width, trsbar_spacing)):
+    datums.append(mdl.parts['concslabPart'].DatumPlaneByPrincipalPlane(offset=x_ori - offset
+	   , principalPlane=YZPLANE))
+    datums.append(mdl.parts['concslabPart'].DatumPlaneByPrincipalPlane(offset=x_ori + offset
+	   , principalPlane=YZPLANE))
+    datums.append(mdl.parts['concslabPart'].DatumPlaneByPrincipalPlane(offset=x_ori
+	   , principalPlane=YZPLANE))
+
+for i, z_ori in enumerate(model_sbar_location_generator(model_depth, losbar_spacing)):
+    datums.append(mdl.parts['concslabPart'].DatumPlaneByPrincipalPlane(offset=z_ori - offset
+	   , principalPlane=XYPLANE))
+    datums.append(mdl.parts['concslabPart'].DatumPlaneByPrincipalPlane(offset=z_ori + offset
+	   , principalPlane=XYPLANE))
+    datums.append(mdl.parts['concslabPart'].DatumPlaneByPrincipalPlane(offset=z_ori
+	   , principalPlane=XYPLANE))
+
+
+#########################################################
+# partition directly next to hole
 # for i, x_ori in enumerate(model_sbar_location_generator(model_width, trsbar_spacing)):
-#     datums.append(mdl.parts['concslabPart'].DatumPlaneByPrincipalPlane(offset=x_ori - offset
-# 	   , principalPlane=YZPLANE))
-#     datums.append(mdl.parts['concslabPart'].DatumPlaneByPrincipalPlane(offset=x_ori + offset
-# 	   , principalPlane=YZPLANE))
 #     datums.append(mdl.parts['concslabPart'].DatumPlaneByPrincipalPlane(offset=x_ori
 # 	   , principalPlane=YZPLANE))
-#
-# for i, z_ori in enumerate(model_sbar_location_generator(model_depth, losbar_spacing)):
-#     datums.append(mdl.parts['concslabPart'].DatumPlaneByPrincipalPlane(offset=z_ori - offset
-# 	   , principalPlane=XYPLANE))
-#     datums.append(mdl.parts['concslabPart'].DatumPlaneByPrincipalPlane(offset=z_ori + offset
-# 	   , principalPlane=XYPLANE))
-#     datums.append(mdl.parts['concslabPart'].DatumPlaneByPrincipalPlane(offset=z_ori
-# 	   , principalPlane=XYPLANE))
-#
-#
-# #########################################################
-# # partition directly next to hole
-# # for i, x_ori in enumerate(model_sbar_location_generator(model_width, trsbar_spacing)):
-# #     datums.append(mdl.parts['concslabPart'].DatumPlaneByPrincipalPlane(offset=x_ori
-# # 	   , principalPlane=YZPLANE))
-#     # datums.append(mdl.parts['concslabPart'].DatumPlaneByPrincipalPlane(offset=x_ori + trsbar_diameter/2
-# 	#    , principalPlane=YZPLANE))
-# #########################################################
-# print('> Partitioning by datum plane')
-# # convert fetaures to datum item
-# datums = [mdl.parts['concslabPart'].datums[d.id] for d in datums]
-# for d in datums:
-# 	mdl.parts['concslabPart'].PartitionCellByDatumPlane(cells=
-# 		mdl.parts['concslabPart'].cells.getByBoundingBox(
-#         yMin=rebar_height - offset, yMax=rebar_height + offset), datumPlane=d)
+    # datums.append(mdl.parts['concslabPart'].DatumPlaneByPrincipalPlane(offset=x_ori + trsbar_diameter/2
+	#    , principalPlane=YZPLANE))
+#########################################################
+print('> Partitioning by datum plane')
+# convert fetaures to datum item
+datums = [mdl.parts['concslabPart'].datums[d.id] for d in datums]
+for d in datums:
+	mdl.parts['concslabPart'].PartitionCellByDatumPlane(cells=
+		mdl.parts['concslabPart'].cells.getByBoundingBox(
+        yMin=rebar_height - offset, yMax=rebar_height + offset), datumPlane=d)
 
 
 
