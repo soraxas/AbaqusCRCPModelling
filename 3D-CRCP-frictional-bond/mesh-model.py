@@ -19,8 +19,8 @@ for part in ['concslabPart', 'loSteelbarPart', 'trSteelBarPart']:
     #     mdl.parts[part].cells.getSequenceFromMask(
     #     ('[#1 ]', ), ), ))
 
-mdl.parts['Wheel'].seedPart(deviationFactor=0.1,
-    minSizeFactor=0.1, size=25.0)
+# mdl.parts['Wheel'].seedPart(deviationFactor=0.1,
+#     minSizeFactor=0.1, size=25.0)
 
 ## mesh subbase
 mdl.parts['subbasePart'].seedPart(deviationFactor=0.1,

@@ -15,7 +15,7 @@ def main():
         DELETE_EXISTING_MODEL = True
 
         run('build-model.py')
-        run('build-wheel.py')
+        #run('build-wheel.py')
 
         run('mesh-model.py')
 
