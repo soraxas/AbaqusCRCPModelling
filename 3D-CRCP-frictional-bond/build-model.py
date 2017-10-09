@@ -109,7 +109,7 @@ mdl.sketches['__profile__'].rectangle(point1=(0.0, 0.0),
 # trsbar hollow
 for x in model_sbar_location_generator(model_width, trsbar_spacing):
 	y_offset = trsbar_diameter/2
-	y = model_height/2
+	y = rebar_height
 	mdl.sketches['__profile__'].CircleByCenterPerimeter(center=(
 		x, y), point1=(x + trsbar_diameter/2, y))
 mdl.Part(dimensionality=THREE_D, name='concslabPart', type=
@@ -127,7 +127,7 @@ mdl.ConstrainedSketch(gridSpacing=119.99, name='__profile__',
 mdl.parts['concslabPart'].projectReferencesOntoSketch(filter=
     COPLANAR_EDGES, sketch=mdl.sketches['__profile__'])
 for x in model_sbar_location_generator(model_depth, losbar_spacing):
-	y = model_height/2
+	y = rebar_height
 	mdl.sketches['__profile__'].CircleByCenterPerimeter(center=(
 		x, y), point1=(x + losbar_diameter/2, y))
 mdl.parts['concslabPart'].CutExtrude(flipExtrudeDirection=OFF
