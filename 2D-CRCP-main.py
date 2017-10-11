@@ -8,10 +8,19 @@ model_name = '2D_CRCP'
 model_width = 1524.0
 model_height = 304.8
 rebar_location = model_height/2
+
 partition_size = 38.1 * PARTITION_SIZE_MODIFER
+mesh_size = partition_size * 0.2
+trsbar_mesh_size = mesh_size * 0.4
 
 rebar_heights = [model_height * 2/8, model_height * 6/8]
 # rebar_heights = [model_height * 1/2]
+
+losbar_diameter = 19.05
+trsbar_diameter = 15.875
+
+# losbar_spacing = 152.4
+trsbar_spacing = 914.4
 
 TEMP_INITIAL = 48.9
 TEMP_TOPSURFACE = 29.4
@@ -93,31 +102,56 @@ def array_append(array, new_item):
     else:
         return array + new_item
 
-def sbar(height):
+def model_sbar_location_generator(dimension, spacing):
+    # given the sbar spacing and the dimension of the block,
+    # return the location of sbar that lies within the model.
+    return (spacing/2+x*spacing for x in range(int(1+(dimension-spacing/2)/spacing)))
+
+def losbar(height):
     # return a formatted rebar name
-    return 'sbar-{0}'.format(int(height))
+    return 'losbar-{0}'.format(int(height))
+def trsbar(height, x):
+    # return a formatted rebar name
+    return 'trsbar-{0}-x{1}'.format(int(height), int(x))
 ################################################################################
 
 mdl.ConstrainedSketch(name='__profile__', sheetSize=3000.0)
 mdl.sketches['__profile__'].rectangle(point1=(0.0, 0.0),
     point2=(model_width, model_height))
+for rebar_y in rebar_heights:
+    for x in model_sbar_location_generator(model_width, trsbar_spacing):
+    	mdl.sketches['__profile__'].CircleByCenterPerimeter(center=(
+    		x, rebar_y), point1=(x + trsbar_diameter/2, rebar_y))
 mdl.Part(dimensionality=TWO_D_PLANAR, name=
     'concslabPart', type=DEFORMABLE_BODY)
 mdl.parts['concslabPart'].BaseShell(sketch=
     mdl.sketches['__profile__'])
 del mdl.sketches['__profile__']
+
 for rebar_y in rebar_heights:
+    # make a hollow hole in concslab
     mdl.ConstrainedSketch(name='__profile__', sheetSize=3000.0)
     mdl.sketches['__profile__'].Line(point1=(0.0, rebar_y), point2=(
         model_width, rebar_y))
     mdl.sketches['__profile__'].HorizontalConstraint(
         addUndoState=False, entity=
         mdl.sketches['__profile__'].geometry[2])
-    mdl.Part(dimensionality=TWO_D_PLANAR, name=sbar(rebar_y), type=
+    mdl.Part(dimensionality=TWO_D_PLANAR, name=losbar(rebar_y), type=
         DEFORMABLE_BODY)
-    mdl.parts[sbar(rebar_y)].BaseWire(sketch=
+    mdl.parts[losbar(rebar_y)].BaseWire(sketch=
         mdl.sketches['__profile__'])
     del mdl.sketches['__profile__']
+
+    # make a plane stress trsbar
+    for x in model_sbar_location_generator(model_width, trsbar_spacing):
+        mdl.ConstrainedSketch(name='__profile__', sheetSize=3000.0)
+    	mdl.sketches['__profile__'].CircleByCenterPerimeter(center=(
+    		x, rebar_y), point1=(x + trsbar_diameter/2, rebar_y))
+        mdl.Part(dimensionality=TWO_D_PLANAR, name=trsbar(rebar_y, x), type=
+            DEFORMABLE_BODY)
+        mdl.parts[trsbar(rebar_y, x)].BaseShell(sketch=
+            mdl.sketches['__profile__'])
+        del mdl.sketches['__profile__']
 # Save by kyue3641 on 2017_08_16-11.47.36; build 6.14-1 2014_06_05-08.11.02 134264
 #####################################################
 ### Setup Material Property
@@ -143,10 +177,11 @@ mdl.rootAssembly.makeIndependent(instances=(
 mdl.rootAssembly.instances['concslab'], ))
 
 for rebar_y in rebar_heights:
-    mdl.rootAssembly.Instance(dependent=ON, name=sbar(rebar_y), part=
-        mdl.parts[sbar(rebar_y)])
-    mdl.rootAssembly.makeIndependent(instances=(
-    mdl.rootAssembly.instances[sbar(rebar_y)], ))
+    mdl.rootAssembly.Instance(dependent=OFF, name=losbar(rebar_y), part=
+        mdl.parts[losbar(rebar_y)])
+    for x in model_sbar_location_generator(model_width, trsbar_spacing):
+        mdl.rootAssembly.Instance(dependent=OFF, name=trsbar(rebar_y, x), part=
+            mdl.parts[trsbar(rebar_y, x)])
 # mdl.rootAssembly.translate(instanceList=('sbar',),
 #                            vector=(0.0, rebar_location, 0.0))
 ## Make instances independent
@@ -177,33 +212,56 @@ for rebar_y in rebar_heights:
     for p in [mdl.rootAssembly.datums[d.id] for d in datums_pts]:
 
         mdl.rootAssembly.PartitionEdgeByPoint(edge=
-        mdl.rootAssembly.instances[sbar(rebar_y)].edges[i], point=p)
+        mdl.rootAssembly.instances[losbar(rebar_y)].edges[i], point=p)
         i += 1
+
+    # partition trsbar
+    for x in model_sbar_location_generator(model_width, trsbar_spacing):
+        mdl.ConstrainedSketch(gridSpacing=1.11, name='__profile__',
+        sheetSize=44.77, transform=
+        mdl.rootAssembly.MakeSketchTransform(
+        sketchPlane=mdl.rootAssembly.instances[trsbar(rebar_y, x)].faces[0],
+        sketchPlaneSide=SIDE1, sketchOrientation=RIGHT, origin=(0,0,0)))
+        mdl.sketches['__profile__'].Line(point1=(x - trsbar_diameter, rebar_y),
+                                         point2=(x + trsbar_diameter, rebar_y))
+        mdl.sketches['__profile__'].Line(point1=(x, rebar_y - trsbar_diameter),
+                                         point2=(x, rebar_y + trsbar_diameter))
+        mdl.sketches['__profile__'].HorizontalConstraint(
+        addUndoState=False, entity=
+        mdl.sketches['__profile__'].geometry[2])
+        mdl.rootAssembly.PartitionFaceBySketch(faces=
+        mdl.rootAssembly.instances[trsbar(rebar_y, x)].faces, sketch=mdl.sketches['__profile__'])
 
 
 ## Define Connector behavior
-    ## ConcStbar-BondSp behavior of a whole element
-mdl.ConnectorSection(name='ConcStbar-BondSp interior-HORZ',
+    ## losbar-BondSp behavior of a whole element
+mdl.ConnectorSection(name='losbar-BondSp interior-HORZ',
      translationalType=AXIAL)
-mdl.sections['ConcStbar-BondSp interior-HORZ'].setValues(behaviorOptions=
+mdl.sections['losbar-BondSp interior-HORZ'].setValues(behaviorOptions=
     (ConnectorElasticity(behavior=NONLINEAR, table=((0.0, -0.2032), (
     -4241.1416, -0.1016), (-12107.77521, -0.0508), (-11013.28706, -0.0254), (
     0.0, 0.0), (11013.28706, 0.0254), (12107.77521, 0.0508), (4241.1416,
     0.1016), (0.0, 0.2032)), independentComponents=(), components=(1, )), ))
-    ## ConcStbar-BondSp behavior of a whole element
-mdl.ConnectorSection(name='ConcStbar-BondSp corner-HORZ',
+    ## losbar-BondSp behavior of a whole element
+mdl.ConnectorSection(name='losbar-BondSp corner-HORZ',
     translationalType=AXIAL)
-mdl.sections['ConcStbar-BondSp corner-HORZ'].setValues(
+mdl.sections['losbar-BondSp corner-HORZ'].setValues(
     behaviorOptions=(ConnectorElasticity(behavior=NONLINEAR, table=((0.0,
     -0.2032), (-2120.5708, -0.1016), (-6053.887607, -0.0508), (-5506.643529,
     -0.0254), (0.0, 0.0), (5506.643529, 0.0254), (6053.887607, 0.0508), (
     2120.5708, 0.1016), (0.0, 0.2032)), independentComponents=(), components=(
     1, )), ))
-mdl.ConnectorSection(name='ConcStbar-BondSp all-VERT',
+mdl.ConnectorSection(name='losbar-BondSp all-VERT',
     translationalType=CARTESIAN)
-mdl.sections['ConcStbar-BondSp all-VERT'].setValues(
-    behaviorOptions=(ConnectorElasticity(table=((1e+15, ), ),
+mdl.sections['losbar-BondSp all-VERT'].setValues(
+    behaviorOptions=(ConnectorElasticity(table=((1e+15,  ), ),
     independentComponents=(), components=(2, )), ))
+mdl.ConnectorSection(name='trsbar-ALL-RIGID',
+    translationalType=CARTESIAN)
+mdl.sections['trsbar-ALL-RIGID'].setValues(
+    behaviorOptions=(ConnectorElasticity(table=((1e+15,1e+15  ), ),
+    independentComponents=(), components=(1,2 )), ))
+
 
 ######## SHEAR LAYERS:
 
@@ -241,15 +299,30 @@ mdl.sections['ConcBase-Friction corner-HORZ'].setValues(
 
 
 ############# Connect steel bar with concrete
+########## FOR trsbar
+trsbarBond = []
+for stbar in [i for i in mdl.rootAssembly.instances.keys() if 'trsbar' in i]:
+    vertices = mdl.rootAssembly.instances[stbar].vertices
+    for stbarV in vertices:
+        concV = mdl.rootAssembly.instances['concslab'].vertices.findAt(stbarV.pointOn[0])
+        if concV is None:
+            continue
+        ## connect these two point
+        _tmp = mdl.rootAssembly.WirePolyLine(mergeType=IMPRINT, meshable=OFF
+            , points=((stbarV, concV), ))
+        trsbarBond.append(_tmp)
 
+########## FOR losbar
 ## store the wire in lists
 stbarBondVert = []
 stbarBondHort = []
 
-for stbar in [i for i in mdl.rootAssembly.instances.keys() if 'sbar' in i]:
+for stbar in [i for i in mdl.rootAssembly.instances.keys() if 'losbar' in i]:
     vertices = mdl.rootAssembly.instances[stbar].vertices
     for stbarV in vertices:
         concV = mdl.rootAssembly.instances['concslab'].vertices.findAt(stbarV.pointOn[0])
+        if concV is None:
+            continue
         ## connect these two point
         # Vertical wire
         _tmp = mdl.rootAssembly.WirePolyLine(mergeType=IMPRINT, meshable=OFF
@@ -369,68 +442,72 @@ mdl.DisplacementBC(amplitude=UNSET, createStepName='Initial'
 ############# Assign material properties to section
 ## Assign concrete properties
 mdl.HomogeneousSolidSection(material='Concrete', name=
-    'ConcSection', thickness=None)
+    'ConcSection', thickness=model_height/2)
 
     # Create set
 f = mdl.parts['concslabPart'].faces
 mdl.parts['concslabPart'].Set(name='Side', faces= f)
 
-mdl.parts['concslabPart'].SectionAssignment(offset=    0.0,
+mdl.parts['concslabPart'].SectionAssignment(offset=0.0,
     offsetField='', offsetType=MIDDLE_SURFACE, region=
     mdl.parts['concslabPart'].sets['Side'], sectionName=
     'ConcSection', thicknessAssignment=FROM_SECTION)
 
 # Add thickness to slab
-mdl.sections['ConcSection'].setValues(material='Concrete', thickness=model_height/2)
+# mdl.sections['ConcSection'].setValues(material='Concrete', thickness=model_height/2)
 
 ## Assign steel properties
-mdl.CircularProfile(name='Sbar_diameter', r=9.525)
+mdl.CircularProfile(name='Sbar_radius', r=losbar_diameter/2)
 mdl.BeamSection(consistentMassMatrix=False, integration=
-    DURING_ANALYSIS, material='Steel', name='SteelSection', poissonRatio=0.0,
-    profile='Sbar_diameter', temperatureVar=LINEAR)
+    DURING_ANALYSIS, material='Steel', name='losbarSection', poissonRatio=0.0,
+    profile='Sbar_radius', temperatureVar=LINEAR)
 
 for rebar_y in rebar_heights:
-    e = mdl.parts[sbar(rebar_y)].edges
-    mdl.parts[sbar(rebar_y)].Set(name='LongSteel', edges= e)
+    # trsbar
+    mdl.HomogeneousSolidSection(material='Steel', name=
+        'trsbarSection', thickness=None)
+    for x in model_sbar_location_generator(model_width, trsbar_spacing):
+        mdl.parts[trsbar(rebar_y, x)].SectionAssignment(offset=0.0,
+            offsetField='', offsetType=MIDDLE_SURFACE, region=
+            (mdl.parts[trsbar(rebar_y, x)].faces,), sectionName=
+            'trsbarSection', thicknessAssignment=FROM_SECTION)
 
-    mdl.parts[sbar(rebar_y)].SectionAssignment(offset=0.0,
+    # losbar
+    e = mdl.parts[losbar(rebar_y)].edges
+    mdl.parts[losbar(rebar_y)].Set(name='LongSteel', edges= e)
+
+    mdl.parts[losbar(rebar_y)].SectionAssignment(offset=0.0,
         offsetField='', offsetType=MIDDLE_SURFACE, region=
-        mdl.parts[sbar(rebar_y)].sets['LongSteel'],
-        sectionName='SteelSection', thicknessAssignment=FROM_SECTION)
+        mdl.parts[losbar(rebar_y)].sets['LongSteel'],
+        sectionName='losbarSection', thicknessAssignment=FROM_SECTION)
         # Assign material orientation
-    mdl.parts[sbar(rebar_y)].MaterialOrientation(
+    mdl.parts[losbar(rebar_y)].MaterialOrientation(
         additionalRotationType=ROTATION_NONE, axis=AXIS_3, fieldName='', localCsys=
         None, orientationType=GLOBAL, region=
-        mdl.parts[sbar(rebar_y)].sets['LongSteel'],
+        mdl.parts[losbar(rebar_y)].sets['LongSteel'],
         stackDirection=STACK_3)
-    mdl.parts[sbar(rebar_y)].assignBeamSectionOrientation(
+    mdl.parts[losbar(rebar_y)].assignBeamSectionOrientation(
         method=N1_COSINES, n1=(0.0, 0.0, -1.0), region=
-        mdl.parts[sbar(rebar_y)].sets['LongSteel'])
+        mdl.parts[losbar(rebar_y)].sets['LongSteel'])
 
-############### Mesh the sections
-all_instances = [mdl.rootAssembly.instances[i] for i in mdl.rootAssembly.instances.keys()]
-all_instances = tuple(all_instances)
-mdl.rootAssembly.seedPartInstance(deviationFactor=0.1,
-    minSizeFactor=0.1, regions=all_instances, size=partition_size)
-mdl.rootAssembly.setMeshControls(elemShape=QUAD, technique=STRUCTURED,
-    regions=mdl.rootAssembly.instances['concslab'].faces)
-mdl.rootAssembly.generateMesh(regions=all_instances)
-
-
-# ## Define mesh size
-# e = mdl.rootAssembly.instances['concslab'].edges + mdl.rootAssembly.instances['sbar'].edges
-# mdl.rootAssembly.seedEdgeBySize(constraint=FINER,
-#     deviationFactor=0.1, edges= e, size=partition_size)
-# ## Mesh
-# mdl.rootAssembly.generateMesh(regions=(
-#     mdl.rootAssembly.instances['concslab'],
-#     mdl.rootAssembly.instances['sbar']))
 
 
 ######### Assign connector section to wire
+if len(trsbarBond) > 0:
+    ## Assigning for bond slip between stbar and concrete
+    trsbarBond, _ = edgeNameToEdgeArrayFilter(trsbarBond,
+                                              lambda x: True)
+    ##trsbar
+    mdl.rootAssembly.Set(name='STCONC-trsbar', edges=conArray(trsbarBond))
+    mdl.rootAssembly.SectionAssignment(region=
+        mdl.rootAssembly.sets['STCONC-trsbar'], sectionName=
+        'trsbar-ALL-RIGID')
+    mdl.rootAssembly.ConnectorOrientation(localCsys1=
+        mdl.rootAssembly.datums[1], region=
+        mdl.rootAssembly.allSets['STCONC-trsbar'])
 
-## Assigning for bond slip between stbar and concrete
 
+##losbar
 ##  Vertical
 stbarCorner, stbarInterior = edgeNameToEdgeArrayFilter(stbarBondHort,
                                lambda x: eql(x.pointOn[0][0], 0) or
@@ -439,7 +516,7 @@ stbarCorner, stbarInterior = edgeNameToEdgeArrayFilter(stbarBondHort,
 mdl.rootAssembly.Set(name='STCONC-Interior', edges=conArray(stbarInterior))
 mdl.rootAssembly.SectionAssignment(region=
     mdl.rootAssembly.sets['STCONC-Interior'], sectionName=
-    'ConcStbar-BondSp interior-HORZ')
+    'losbar-BondSp interior-HORZ')
 mdl.rootAssembly.ConnectorOrientation(localCsys1=
     mdl.rootAssembly.datums[1], region=
     mdl.rootAssembly.allSets['STCONC-Interior'])
@@ -447,7 +524,7 @@ mdl.rootAssembly.ConnectorOrientation(localCsys1=
 mdl.rootAssembly.Set(name='STCONC-corner', edges=conArray(stbarCorner))
 mdl.rootAssembly.SectionAssignment(region=
     mdl.rootAssembly.sets['STCONC-corner'], sectionName=
-    'ConcStbar-BondSp corner-HORZ')
+    'losbar-BondSp corner-HORZ')
 mdl.rootAssembly.ConnectorOrientation(localCsys1=
     mdl.rootAssembly.datums[1], region=
     mdl.rootAssembly.allSets['STCONC-corner'])
@@ -459,7 +536,7 @@ stbarVert, _ = edgeNameToEdgeArrayFilter(stbarBondVert,
 mdl.rootAssembly.Set(name='STCONC-VERT', edges=conArray(stbarVert))
 mdl.rootAssembly.SectionAssignment(region=
     mdl.rootAssembly.sets['STCONC-VERT'], sectionName=
-    'ConcStbar-BondSp all-VERT')
+    'losbar-BondSp all-VERT')
 mdl.rootAssembly.ConnectorOrientation(localCsys1=
     mdl.rootAssembly.datums[1], region=
     mdl.rootAssembly.allSets['STCONC-VERT'])
@@ -512,6 +589,42 @@ mdl.rootAssembly.ConnectorOrientation(localCsys1=
     mdl.rootAssembly.allSets['CONCBASE-corner-VERT'])
 
 
+############### Mesh the sections
+all_instances = [mdl.rootAssembly.instances[i] for i in mdl.rootAssembly.instances.keys()]
+all_instances = tuple(all_instances)
+
+for i in mdl.rootAssembly.instances.keys():
+    _instance_mesh_size = mesh_size
+    if 'trsbar' in i:
+        _instance_mesh_size = trsbar_mesh_size
+    mdl.rootAssembly.seedPartInstance(deviationFactor=0.1,
+        minSizeFactor=0.1, regions=(mdl.rootAssembly.instances[i],), size=_instance_mesh_size)
+
+# seed the parameter of the trsbar
+for rebar_y in rebar_heights:
+    for x in model_sbar_location_generator(model_width, trsbar_spacing):
+        concslab_trsbar_outer_edges = mdl.rootAssembly.instances['concslab'].edges.getByBoundingBox(xMin=x-trsbar_diameter/2,
+                                                                          xMax=x+trsbar_diameter/2,
+                                                                          yMin=rebar_y-trsbar_diameter/2,
+                                                                          yMax=rebar_y+trsbar_diameter/2)
+        mdl.rootAssembly.seedEdgeBySize(constraint=FINER,
+            deviationFactor=0.1, edges=concslab_trsbar_outer_edges, minSizeFactor=0.1, size=trsbar_mesh_size)
+
+mdl.rootAssembly.setMeshControls(elemShape=QUAD, technique=STRUCTURED,
+    regions=mdl.rootAssembly.instances['concslab'].faces)
+mdl.rootAssembly.generateMesh(regions=all_instances)
+
+
+# ## Define mesh size
+# e = mdl.rootAssembly.instances['concslab'].edges + mdl.rootAssembly.instances['sbar'].edges
+# mdl.rootAssembly.seedEdgeBySize(constraint=FINER,
+#     deviationFactor=0.1, edges= e, size=partition_size)
+# ## Mesh
+# mdl.rootAssembly.generateMesh(regions=(
+#     mdl.rootAssembly.instances['concslab'],
+#     mdl.rootAssembly.instances['sbar']))
+
+
 
 ############## Static Analysis
 
@@ -520,6 +633,7 @@ mdl.rootAssembly.ConnectorOrientation(localCsys1=
 # del mdl.materials['Concrete'].viscoelastic
 
 ##################################
+# exit()
 import datetime
 jobname = model_name+'_@_'+datetime.datetime.now().strftime("%d%m%y_%I-%M%p")
 print('> Submitting analysis now with name "'+jobname+'"')

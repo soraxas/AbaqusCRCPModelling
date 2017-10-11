@@ -6,15 +6,9 @@
 ####
 ##########################################################
 
-model_name = '2D_CRCP'
-model_width = 1524.0 * 2
-model_height = 304.8
-rebar_location = model_height/2
-partition_size = 38.1
-mdl = mdb.models[model_name]
 CONCSLAB_NAME = 'concslab'
-SBAR_NAME = 'sbar'
 
+mdl = mdb.models[model_name]
 
 ##########################################################
 from part import *
@@ -33,37 +27,38 @@ from connectorBehavior import *
 
 def pointOnToPlotNodeIdx(instanceName, pointOn):
     # given a tuple of coordinate, return the vertices index of the given instance name
-    return mdl.rootAssembly.instances[instanceName].vertices.findAt((pointOn,), )[0].index + 1
+    idx = None
+    try:
+        idx = mdl.rootAssembly.instances[instanceName].vertices.findAt((pointOn,), )[0].index + 1
     #### IMPORTANT the +1 is workaround for the weird syntax where plot's id is +1 of edge index
-
+    except IndexError:
+        pass
+    return idx
 
 def templatePlotEntireWidth(instanceName, height):
     pathName = instanceName+'@'+str(height)
     expr = []
     for i in range(int(model_width/partition_size) + 1):
-        expr.append(pointOnToPlotNodeIdx(instanceName, (i * partition_size, height, 0)))
+        nodeidx = pointOnToPlotNodeIdx(instanceName, (i * partition_size, height, 0))
+        if nodeidx is not None:
+            expr.append(nodeidx)
     newPath = session.Path(name=pathName,type=NODE_LIST,expression=(instanceName.upper(),tuple(expr)))
     ## plot XY DATA
     newXYData=session.XYDataFromPath(name=pathName,path=newPath,
                                      includeIntersections=FALSE,
                                      shape=DEFORMED,
                                      labelType=TRUE_DISTANCE)
-                                    #  variable=variable)
 
+def main():
+    session.viewports[session.viewports.keys()[0]].odbDisplay.setPrimaryVariable(
+        variableLabel='S', outputPosition=INTEGRATION_POINT, refinement=(COMPONENT,
+        'S11'))
 
-## plot concslab
+    for i in range(int(model_height/partition_size) + 1):
+        templatePlotEntireWidth(CONCSLAB_NAME, i*partition_size)
 
-# # surface
-# templatePlotEntireWidth('concslab', model_height)
-# # rebar location
-# templatePlotEntireWidth('concslab', rebar_location)
-# # bottom
-# templatePlotEntireWidth('concslab', 0)
+    ## plot sbar
+    for rebar_y in rebar_heights:
+        templatePlotEntireWidth(losbar(rebar_y), rebar_y)
 
-for i in range(int(model_height/partition_size) + 1):
-    templatePlotEntireWidth(CONCSLAB_NAME, i*partition_size)
-
-
-## plot sbar
-
-templatePlotEntireWidth(SBAR_NAME, rebar_location)
+main()

@@ -2,14 +2,26 @@
 ##### MDOEL SETTINGS
 ##################################################
 
-PARTITION_SIZE_MODIFER = 0.25
+PARTITION_SIZE_MODIFER = 1
 
 model_name = '2D_CRCP'
-model_width = 1524.0 * 2
+model_width = 1524.0
 model_height = 304.8
 rebar_location = model_height/2
 partition_size = 38.1 * PARTITION_SIZE_MODIFER
 
+rebar_heights = [model_height * 2/8, model_height * 4/8, model_height * 6/8]
+# rebar_heights = [model_height * 1/2]
+
+TEMP_INITIAL = 48.9
+TEMP_TOPSURFACE = 29.4
+TEMP_BOTSURFACE = 37.8
+
+#########################
+# for submitting job
+NUM_OF_CPUS = 4
+NUM_OF_GPUS = 0
+#########################
 
 if model_name in mdb.models.keys():
     del mdb.models[model_name]
@@ -73,6 +85,17 @@ def conArray(array):
         _tmp += array[i]
     return _tmp
 
+def array_append(array, new_item):
+    if new_item is None:
+        return array
+    if array is None:
+        return new_item
+    else:
+        return array + new_item
+
+def sbar(height):
+    # return a formatted rebar name
+    return 'sbar-{0}'.format(int(height))
 ################################################################################
 
 mdl.ConstrainedSketch(name='__profile__', sheetSize=3000.0)
@@ -83,17 +106,18 @@ mdl.Part(dimensionality=TWO_D_PLANAR, name=
 mdl.parts['concslabPart'].BaseShell(sketch=
     mdl.sketches['__profile__'])
 del mdl.sketches['__profile__']
-mdl.ConstrainedSketch(name='__profile__', sheetSize=3000.0)
-mdl.sketches['__profile__'].Line(point1=(0.0, rebar_location), point2=(
-    model_width, rebar_location))
-mdl.sketches['__profile__'].HorizontalConstraint(
-    addUndoState=False, entity=
-    mdl.sketches['__profile__'].geometry[2])
-mdl.Part(dimensionality=TWO_D_PLANAR, name='steelbarPart', type=
-    DEFORMABLE_BODY)
-mdl.parts['steelbarPart'].BaseWire(sketch=
-    mdl.sketches['__profile__'])
-del mdl.sketches['__profile__']
+for rebar_y in rebar_heights:
+    mdl.ConstrainedSketch(name='__profile__', sheetSize=3000.0)
+    mdl.sketches['__profile__'].Line(point1=(0.0, rebar_y), point2=(
+        model_width, rebar_y))
+    mdl.sketches['__profile__'].HorizontalConstraint(
+        addUndoState=False, entity=
+        mdl.sketches['__profile__'].geometry[2])
+    mdl.Part(dimensionality=TWO_D_PLANAR, name=sbar(rebar_y), type=
+        DEFORMABLE_BODY)
+    mdl.parts[sbar(rebar_y)].BaseWire(sketch=
+        mdl.sketches['__profile__'])
+    del mdl.sketches['__profile__']
 # Save by kyue3641 on 2017_08_16-11.47.36; build 6.14-1 2014_06_05-08.11.02 134264
 #####################################################
 ### Setup Material Property
@@ -115,10 +139,17 @@ mdl.materials['Steel'].Expansion(table=((1.08e-05, ), ))
 mdl.rootAssembly.DatumCsysByDefault(CARTESIAN)
 mdl.rootAssembly.Instance(dependent=ON, name='concslab',
     part=mdl.parts['concslabPart'])
-mdl.rootAssembly.Instance(dependent=ON, name='sbar', part=
-    mdl.parts['steelbarPart'])
+mdl.rootAssembly.makeIndependent(instances=(
+mdl.rootAssembly.instances['concslab'], ))
 
-
+for rebar_y in rebar_heights:
+    mdl.rootAssembly.Instance(dependent=ON, name=sbar(rebar_y), part=
+        mdl.parts[sbar(rebar_y)])
+    mdl.rootAssembly.makeIndependent(instances=(
+    mdl.rootAssembly.instances[sbar(rebar_y)], ))
+# mdl.rootAssembly.translate(instanceList=('sbar',),
+#                            vector=(0.0, rebar_location, 0.0))
+## Make instances independent
 
 ### Create datum plane
 
@@ -136,14 +167,18 @@ mdl.rootAssembly.regenerate()
 
 ## Partioning Longitudinal and Transverse steel bar in Part
     ##Creating DatumPointBy
-for i in range(int(model_width/partition_size)-1):
-    mdl.parts['steelbarPart'].DatumPointByCoordinate(coords=(
-        partition_size*(i+1), rebar_location, 0.0))
-    ## Partitioning the steel bar
-for i in range(int(model_width/partition_size)-1):
-    mdl.parts['steelbarPart'].PartitionEdgeByPoint(edge=
-    mdl.parts['steelbarPart'].edges[i], point=
-    mdl.parts['steelbarPart'].datums[i+2])
+for rebar_y in rebar_heights:
+    datums_pts = []
+    for i in range(int(model_width/partition_size)-1):
+        datums_pts.append(mdl.rootAssembly.DatumPointByCoordinate(coords=(
+            partition_size*(i+1), rebar_y, 0.0)))
+        ## Partitioning the steel bar
+    i = 0
+    for p in [mdl.rootAssembly.datums[d.id] for d in datums_pts]:
+
+        mdl.rootAssembly.PartitionEdgeByPoint(edge=
+        mdl.rootAssembly.instances[sbar(rebar_y)].edges[i], point=p)
+        i += 1
 
 
 ## Define Connector behavior
@@ -207,17 +242,11 @@ mdl.sections['ConcBase-Friction corner-HORZ'].setValues(
 
 ############# Connect steel bar with concrete
 
-# iterate all steel bar to get its vertices and connect to concrete slab
-stbarInstances = []
-for i in mdl.rootAssembly.instances.keys():
-    if 'sbar' in i:
-        stbarInstances.append(i)
-
 ## store the wire in lists
 stbarBondVert = []
 stbarBondHort = []
 
-for stbar in stbarInstances:
+for stbar in [i for i in mdl.rootAssembly.instances.keys() if 'sbar' in i]:
     vertices = mdl.rootAssembly.instances[stbar].vertices
     for stbarV in vertices:
         concV = mdl.rootAssembly.instances['concslab'].vertices.findAt(stbarV.pointOn[0])
@@ -250,50 +279,90 @@ for v in mdl.rootAssembly.instances['concslab'].vertices:
         concBaseBondHorz.append(_tmp)
 
 ########## Defining node sets
-#### make each surfacec in y axis as node set
-lvl = model_height
-j = 0
-while lvl >= 0:
-    vertices = mdl.rootAssembly.instances['concslab'].vertices.getByBoundingBox(yMax=lvl, yMin=lvl)
-    mdl.rootAssembly.Set(name='SurfaceSet'+str(j), vertices=vertices)
-    j += 1
-    lvl -= partition_size
-    lvl = round(lvl,10) # force rounding
-
-# Set "All"
-v = mdl.rootAssembly.instances['concslab'].vertices + mdl.rootAssembly.instances['sbar'].vertices
-
-mdl.rootAssembly.Set(name='All', vertices=v)
-
-####### Create Step
-mdl.ViscoStep(cetol=10.0, name='Visco', previous='Initial')
-mdl.steps['Visco'].setValues(cetol=10.0, initialInc=4.0,
+mdl.StaticStep(name='Static-thermal', previous='Initial')
+mdl.steps['Static-thermal'].setValues(initialInc=4.0,
     timeIncrementationMethod=FIXED, timePeriod=12.0)
-####### Create Predefined Field
+# mdl.(maintainAttributes=True, name='Static-thermal',
+#     previous='Initial')
+
+faces = None
+cells = None
+edges = None
+vertices = None
+for k in mdl.rootAssembly.instances.keys():
+    faces = array_append(faces, mdl.rootAssembly.instances[k].faces)
+    cells = array_append(cells, mdl.rootAssembly.instances[k].cells)
+    edges = array_append(edges, mdl.rootAssembly.instances[k].edges)
+    vertices = array_append(vertices, mdl.rootAssembly.instances[k].vertices)
+
+TEMP_REGION = Region(
+faces=faces,
+cells=cells,
+edges=edges,
+vertices=vertices
+)
+
+
 mdl.Temperature(createStepName='Initial',
     crossSectionDistribution=CONSTANT_THROUGH_THICKNESS, distributionType=
-    UNIFORM, magnitudes=(48.9, ), name='All', region=
-    mdl.rootAssembly.sets['All'])
+    UNIFORM, magnitudes=(TEMP_INITIAL, ), name='Initial-temp', region=TEMP_REGION)
 
-T = (37.8-29.4)/(model_height/partition_size)
-for i in range(int(model_height/partition_size)+1):
-    mdl.Temperature(createStepName='Visco',
-        crossSectionDistribution=CONSTANT_THROUGH_THICKNESS, distributionType=
-        UNIFORM, magnitudes=(29.4+i*T, ), name='TempLvl_'+str(i), region=
-        mdl.rootAssembly.sets['SurfaceSet'+str(i)])
+expression = '(({1}-{0})/{2}*Y+{0})'.format(TEMP_BOTSURFACE, TEMP_TOPSURFACE, model_height)
+mdl.ExpressionField(description=
+    'The temperature gradient for concslab, from top surface as ', expression=
+    expression, localCsys=None, name='Temperature Gradient of concslab')
+mdl.Temperature(createStepName='Static-thermal',
+    crossSectionDistribution=CONSTANT_THROUGH_THICKNESS, distributionType=FIELD
+    , field='Temperature Gradient of concslab', magnitudes=(1, ), name='Conc-gradient-field',
+    region=TEMP_REGION)
+
+# #### make each surfacec in y axis as node set
+# lvl = model_height
+# j = 0
+# while lvl >= 0:
+#     vertices = mdl.rootAssembly.instances['concslab'].vertices.getByBoundingBox(yMax=lvl, yMin=lvl)
+#     mdl.rootAssembly.Set(name='SurfaceSet'+str(j), vertices=vertices)
+#     j += 1
+#     lvl -= partition_size
+#     lvl = round(lvl,10) # force rounding
+#
+# # Set "All"
+# v = mdl.rootAssembly.instances['concslab'].vertices + mdl.rootAssembly.instances['sbar'].vertices
+#
+# mdl.rootAssembly.Set(name='All', vertices=v)
+# ######### TEMPERATURE ################
+#
+#
+# ####### Create Predefined Field
+# mdl.Temperature(createStepName='Initial',
+#     crossSectionDistribution=CONSTANT_THROUGH_THICKNESS, distributionType=
+#     UNIFORM, magnitudes=(48.9, ), name='All', region=
+#     mdl.rootAssembly.sets['All'])
+#
+# T = (37.8-29.4)/(model_height/partition_size)
+# for i in range(int(model_height/partition_size)+1):
+#     mdl.Temperature(createStepName='Static-thermal',
+#         crossSectionDistribution=CONSTANT_THROUGH_THICKNESS, distributionType=
+#         UNIFORM, magnitudes=(29.4+i*T, ), name='TempLvl_'+str(i), region=
+#         mdl.rootAssembly.sets['SurfaceSet'+str(i)])
 
 ############# Set boundary condition
-mdl.rootAssembly.Set(name='SBLeft', vertices=
-    mdl.rootAssembly.instances['sbar'].vertices.findAt(((0, rebar_location, 0.0),), ))
+sbar_left = None
+sbar_right = None
+for rebar_y in rebar_heights:
+    for i in [k for k in mdl.rootAssembly.instances.keys() if 'sbar' in k]:
+        sbar_left = array_append(sbar_left, mdl.rootAssembly.instances[i].vertices.findAt(((0, rebar_y, 0.0),), ))
+        sbar_right = array_append(sbar_right, mdl.rootAssembly.instances[i].vertices.findAt(((model_width, rebar_y, 0.0),), ))
+
+mdl.rootAssembly.Set(name='SBLeft', vertices=sbar_left)
+mdl.rootAssembly.Set(name='SBRight', vertices=sbar_right)
 mdl.DisplacementBC(amplitude=UNSET, createStepName='Initial'
     , distributionType=UNIFORM, fieldName='', localCsys=None, name='SbarLeft',
     region=mdl.rootAssembly.sets['SBLeft'], u1=SET, u2=UNSET,
     ur3=SET)
-mdl.rootAssembly.Set(name='SbRight', vertices=
-    mdl.rootAssembly.instances['sbar'].vertices.findAt(((model_width, rebar_location, 0.0),), ))
 mdl.DisplacementBC(amplitude=UNSET, createStepName='Initial'
     , distributionType=UNIFORM, fieldName='', localCsys=None, name='SbarRight',
-    region=mdl.rootAssembly.sets['SbRight'], u1=SET, u2=UNSET,
+    region=mdl.rootAssembly.sets['SBRight'], u1=SET, u2=UNSET,
     ur3=SET)
 
 
@@ -320,38 +389,42 @@ mdl.BeamSection(consistentMassMatrix=False, integration=
     DURING_ANALYSIS, material='Steel', name='SteelSection', poissonRatio=0.0,
     profile='Sbar_diameter', temperatureVar=LINEAR)
 
-e = mdl.parts['steelbarPart'].edges
-mdl.parts['steelbarPart'].Set(name='LongSteel', edges= e)
+for rebar_y in rebar_heights:
+    e = mdl.parts[sbar(rebar_y)].edges
+    mdl.parts[sbar(rebar_y)].Set(name='LongSteel', edges= e)
 
-mdl.parts['steelbarPart'].SectionAssignment(offset=0.0,
-    offsetField='', offsetType=MIDDLE_SURFACE, region=
-    mdl.parts['steelbarPart'].sets['LongSteel'],
-    sectionName='SteelSection', thicknessAssignment=FROM_SECTION)
-    # Assign material orientation
-mdl.parts['steelbarPart'].MaterialOrientation(
-    additionalRotationType=ROTATION_NONE, axis=AXIS_3, fieldName='', localCsys=
-    None, orientationType=GLOBAL, region=
-    mdl.parts['steelbarPart'].sets['LongSteel'],
-    stackDirection=STACK_3)
-mdl.parts['steelbarPart'].assignBeamSectionOrientation(
-    method=N1_COSINES, n1=(0.0, 0.0, -1.0), region=
-    mdl.parts['steelbarPart'].sets['LongSteel'])
+    mdl.parts[sbar(rebar_y)].SectionAssignment(offset=0.0,
+        offsetField='', offsetType=MIDDLE_SURFACE, region=
+        mdl.parts[sbar(rebar_y)].sets['LongSteel'],
+        sectionName='SteelSection', thicknessAssignment=FROM_SECTION)
+        # Assign material orientation
+    mdl.parts[sbar(rebar_y)].MaterialOrientation(
+        additionalRotationType=ROTATION_NONE, axis=AXIS_3, fieldName='', localCsys=
+        None, orientationType=GLOBAL, region=
+        mdl.parts[sbar(rebar_y)].sets['LongSteel'],
+        stackDirection=STACK_3)
+    mdl.parts[sbar(rebar_y)].assignBeamSectionOrientation(
+        method=N1_COSINES, n1=(0.0, 0.0, -1.0), region=
+        mdl.parts[sbar(rebar_y)].sets['LongSteel'])
 
 ############### Mesh the sections
+all_instances = [mdl.rootAssembly.instances[i] for i in mdl.rootAssembly.instances.keys()]
+all_instances = tuple(all_instances)
+mdl.rootAssembly.seedPartInstance(deviationFactor=0.1,
+    minSizeFactor=0.1, regions=all_instances, size=partition_size)
+mdl.rootAssembly.setMeshControls(elemShape=QUAD, technique=STRUCTURED,
+    regions=mdl.rootAssembly.instances['concslab'].faces)
+mdl.rootAssembly.generateMesh(regions=all_instances)
 
-## Define mesh size
-e = mdl.rootAssembly.instances['concslab'].edges + mdl.rootAssembly.instances['sbar'].edges
-mdl.rootAssembly.seedEdgeBySize(constraint=FINER,
-    deviationFactor=0.1, edges= e, size=partition_size)
-## Make instances independent
-mdl.rootAssembly.makeIndependent(instances=(
-    mdl.rootAssembly.instances['concslab'], ))
-mdl.rootAssembly.makeIndependent(instances=(
-    mdl.rootAssembly.instances['sbar'], ))
-## Mesh
-mdl.rootAssembly.generateMesh(regions=(
-    mdl.rootAssembly.instances['concslab'],
-    mdl.rootAssembly.instances['sbar']))
+
+# ## Define mesh size
+# e = mdl.rootAssembly.instances['concslab'].edges + mdl.rootAssembly.instances['sbar'].edges
+# mdl.rootAssembly.seedEdgeBySize(constraint=FINER,
+#     deviationFactor=0.1, edges= e, size=partition_size)
+# ## Mesh
+# mdl.rootAssembly.generateMesh(regions=(
+#     mdl.rootAssembly.instances['concslab'],
+#     mdl.rootAssembly.instances['sbar']))
 
 
 ######### Assign connector section to wire
@@ -441,8 +514,20 @@ mdl.rootAssembly.ConnectorOrientation(localCsys1=
 
 
 ############## Static Analysis
-mdl.StaticStep(maintainAttributes=True, name='Visco',
-    previous='Initial')
-# mdl.ViscoStep(cetol=0.001, name='Visco', nlgeom=ON,
+
+# mdl.ViscoStep(cetol=0.001, name='Static-thermal', nlgeom=ON,
 #     previous='Initial')
 # del mdl.materials['Concrete'].viscoelastic
+
+##################################
+import datetime
+jobname = model_name+'_@_'+datetime.datetime.now().strftime("%d%m%y_%I-%M%p")
+print('> Submitting analysis now with name "'+jobname+'"')
+mdb.Job(atTime=None, contactPrint=OFF, description='', echoPrint=OFF,
+    explicitPrecision=SINGLE, getMemoryFromAnalysis=True, historyPrint=OFF,
+    memory=90, memoryUnits=PERCENTAGE, model=model_name,
+    modelPrint=OFF, multiprocessingMode=DEFAULT, name=jobname,
+    nodalOutputPrecision=SINGLE, numCpus=NUM_OF_CPUS, numDomains=4, numGPUs=NUM_OF_GPUS, queue=None
+    , resultsFormat=ODB, scratch='', type=ANALYSIS, userSubroutine='',
+    waitHours=0, waitMinutes=0)
+mdb.jobs[jobname].submit(consistencyChecking=OFF)
