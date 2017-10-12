@@ -98,7 +98,6 @@ for dimension in [model_width, model_height, model_depth]:
             print(msg)
             raise AbaqusException(msg)
 
-rebar_height
 ##################################################
 ##### SETUP PART DIMENSIONS
 ##################################################
@@ -107,11 +106,10 @@ mdl.ConstrainedSketch(name='__profile__', sheetSize=3000.0)
 mdl.sketches['__profile__'].rectangle(point1=(0.0, 0.0),
     point2=(model_width, model_height))
 # trsbar hollow
-for x in model_sbar_location_generator(model_width, trsbar_spacing):
-	y_offset = trsbar_diameter/2
-	y = rebar_height
-	mdl.sketches['__profile__'].CircleByCenterPerimeter(center=(
-		x, y), point1=(x + trsbar_diameter/2, y))
+for y in rebar_heights:
+    for x in model_sbar_location_generator(model_width, trsbar_spacing):
+    	mdl.sketches['__profile__'].CircleByCenterPerimeter(center=(
+    		x, y), point1=(x + trsbar_diameter/2, y))
 mdl.Part(dimensionality=THREE_D, name='concslabPart', type=
     DEFORMABLE_BODY)
 mdl.parts['concslabPart'].BaseSolidExtrude(depth=model_depth, sketch=
@@ -126,10 +124,10 @@ mdl.ConstrainedSketch(gridSpacing=119.99, name='__profile__',
     sketchOrientation=RIGHT, origin=(1524.0, 0, model_depth)))
 mdl.parts['concslabPart'].projectReferencesOntoSketch(filter=
     COPLANAR_EDGES, sketch=mdl.sketches['__profile__'])
-for x in model_sbar_location_generator(model_depth, losbar_spacing):
-	y = rebar_height
-	mdl.sketches['__profile__'].CircleByCenterPerimeter(center=(
-		x, y), point1=(x + losbar_diameter/2, y))
+for y in rebar_heights:
+    for x in model_sbar_location_generator(model_depth, losbar_spacing):
+    	mdl.sketches['__profile__'].CircleByCenterPerimeter(center=(
+    		x, y), point1=(x + losbar_diameter/2, y))
 mdl.parts['concslabPart'].CutExtrude(flipExtrudeDirection=OFF
     , sketch=mdl.sketches['__profile__'], sketchOrientation=
     RIGHT, sketchPlane=mdl.parts['concslabPart'].faces[2],
@@ -204,10 +202,11 @@ mdl.rootAssembly.Instance(dependent=ON, name='concslab',
     part=mdl.parts['concslabPart'])
 mdl.rootAssembly.Instance(dependent=ON, name='subbase',
     part=mdl.parts['subbasePart'])
-mdl.rootAssembly.Instance(dependent=ON, name='losbar', part=
-    mdl.parts['loSteelbarPart'])
-mdl.rootAssembly.Instance(dependent=ON, name='trsbar',
-    part=mdl.parts['trSteelBarPart'])
+for y in rebar_heights:
+    mdl.rootAssembly.Instance(dependent=ON, name='losbar-{0}'.format(int(y)), part=
+        mdl.parts['loSteelbarPart'])
+    mdl.rootAssembly.Instance(dependent=ON, name='trsbar-{0}'.format(int(y)),
+        part=mdl.parts['trSteelBarPart'])
 # mdl.rootAssembly.Instance(dependent=ON, name='wheel-1',
 #     part=mdl.parts['wheelPart'])
 ##################################################
@@ -217,37 +216,23 @@ mdl.rootAssembly.Instance(dependent=ON, name='trsbar',
 mdl.rootAssembly.translate(instanceList=('subbase', ),
     vector=(0.0, -subbase_thickness, 0))
 ### Lognitudial steel bar
-mdl.rootAssembly.rotate(angle=270.0, axisDirection=(0.0,
-    model_height, 0.0), axisPoint=(model_width * num_pavements , 0.0, 0.0), instanceList=('losbar', ))
-mdl.rootAssembly.translate(instanceList=('losbar', ),
-    vector=(0.0, rebar_height, model_width * num_pavements + losbar_spacing/2))
-# clone by increments
-mdl.rootAssembly.LinearInstancePattern(direction1=(-1.0, 0.0,
-    0.0), direction2=(0.0, 0.0, 1.0), instanceList=('losbar', ), number1=1,
-    number2=12, spacing1=0, spacing2=losbar_spacing)
-# rename to better names
-mdl.rootAssembly.features.changeKey(fromName='losbar', toName='losbar1')
-mdl.rootAssembly.features.changeKey(fromName='losbar-lin-1-2', toName='losbar2')
-mdl.rootAssembly.features.changeKey(fromName='losbar-lin-1-3', toName='losbar3')
-mdl.rootAssembly.features.changeKey(fromName='losbar-lin-1-4', toName='losbar4')
-mdl.rootAssembly.features.changeKey(fromName='losbar-lin-1-5', toName='losbar5')
-mdl.rootAssembly.features.changeKey(fromName='losbar-lin-1-6', toName='losbar6')
-mdl.rootAssembly.features.changeKey(fromName='losbar-lin-1-7', toName='losbar7')
-mdl.rootAssembly.features.changeKey(fromName='losbar-lin-1-8', toName='losbar8')
-mdl.rootAssembly.features.changeKey(fromName='losbar-lin-1-9', toName='losbar9')
-mdl.rootAssembly.features.changeKey(fromName='losbar-lin-1-10', toName='losbar10')
-mdl.rootAssembly.features.changeKey(fromName='losbar-lin-1-11', toName='losbar11')
-mdl.rootAssembly.features.changeKey(fromName='losbar-lin-1-12', toName='losbar12')
-### Transverse steel bar
-mdl.rootAssembly.instances['trsbar'].translate(vector=(
-    model_depth-trsbar_spacing/2, rebar_height, 0.0))
-# clone by increments
-mdl.rootAssembly.LinearInstancePattern(direction1=(-1.0, 0.0,
-    0.0), direction2=(0.0, 1.0, 0.0), instanceList=('trsbar', ), number1=2,
-    number2=1, spacing1=trsbar_spacing, spacing2=1.0)
-# rename to better names
-mdl.rootAssembly.features.changeKey(fromName='trsbar', toName='trsbar1')
-mdl.rootAssembly.features.changeKey(fromName='trsbar-lin-2-1', toName='trsbar2')
+for y in rebar_heights:
+    mdl.rootAssembly.rotate(angle=270.0, axisDirection=(0.0,
+        model_height, 0.0), axisPoint=(model_width * num_pavements , 0.0, 0.0), instanceList=('losbar-{0}'.format(int(y)), ))
+    mdl.rootAssembly.translate(instanceList=('losbar-{0}'.format(int(y)), ),
+        vector=(0.0, y, model_width * num_pavements + losbar_spacing/2))
+    # clone by increments
+    mdl.rootAssembly.LinearInstancePattern(direction1=(-1.0, 0.0,
+        0.0), direction2=(0.0, 0.0, 1.0), instanceList=('losbar-{0}'.format(int(y)), ), number1=1,
+        number2=12, spacing1=0, spacing2=losbar_spacing)
+
+    ### Transverse steel bar
+    mdl.rootAssembly.instances['trsbar-{0}'.format(int(y))].translate(vector=(
+        model_depth-trsbar_spacing/2, y, 0.0))
+    # clone by increments
+    mdl.rootAssembly.LinearInstancePattern(direction1=(-1.0, 0.0,
+        0.0), direction2=(0.0, 1.0, 0.0), instanceList=('trsbar-{0}'.format(int(y)), ), number1=2,
+        number2=1, spacing1=trsbar_spacing, spacing2=1.0)
 
 #### translate wheel
 # mdl.rootAssembly.translate(instanceList=('Wheel-1', ), vector=(
@@ -261,52 +246,54 @@ mdl.rootAssembly.features.changeKey(fromName='trsbar-lin-2-1', toName='trsbar2')
 ##################################################
 offset = model_height/3/2
 print('> Creating Datum Planes')
+
+for rebar_y in rebar_heights:
 # up and down of steelbar
-mdl.parts['concslabPart'].DatumPlaneByPrincipalPlane(offset=rebar_height - offset
-	, principalPlane=XZPLANE)
-mdl.parts['concslabPart'].DatumPlaneByPrincipalPlane(offset=rebar_height + offset
-	, principalPlane=XZPLANE)
-mdl.parts['concslabPart'].DatumPlaneByPrincipalPlane(offset=rebar_height
-	, principalPlane=XZPLANE)
+    mdl.parts['concslabPart'].DatumPlaneByPrincipalPlane(offset=rebar_y - offset
+    	, principalPlane=XZPLANE)
+    mdl.parts['concslabPart'].DatumPlaneByPrincipalPlane(offset=rebar_y + offset
+    	, principalPlane=XZPLANE)
+    mdl.parts['concslabPart'].DatumPlaneByPrincipalPlane(offset=rebar_y
+    	, principalPlane=XZPLANE)
 
-for _,v in mdl.parts['concslabPart'].datums.items():
-	mdl.parts['concslabPart'].PartitionCellByDatumPlane(cells=
-		mdl.parts['concslabPart'].cells, datumPlane=v)
+    for _,v in mdl.parts['concslabPart'].datums.items():
+    	mdl.parts['concslabPart'].PartitionCellByDatumPlane(cells=
+    		mdl.parts['concslabPart'].cells, datumPlane=v)
 
-datums = []
-# left and right of steelbar
-for i, x_ori in enumerate(model_sbar_location_generator(model_width, trsbar_spacing)):
-    datums.append(mdl.parts['concslabPart'].DatumPlaneByPrincipalPlane(offset=x_ori - offset
-	   , principalPlane=YZPLANE))
-    datums.append(mdl.parts['concslabPart'].DatumPlaneByPrincipalPlane(offset=x_ori + offset
-	   , principalPlane=YZPLANE))
-    datums.append(mdl.parts['concslabPart'].DatumPlaneByPrincipalPlane(offset=x_ori
-	   , principalPlane=YZPLANE))
+    datums = []
+    # left and right of steelbar
+    for i, x_ori in enumerate(model_sbar_location_generator(model_width, trsbar_spacing)):
+        datums.append(mdl.parts['concslabPart'].DatumPlaneByPrincipalPlane(offset=x_ori - offset
+    	   , principalPlane=YZPLANE))
+        datums.append(mdl.parts['concslabPart'].DatumPlaneByPrincipalPlane(offset=x_ori + offset
+    	   , principalPlane=YZPLANE))
+        datums.append(mdl.parts['concslabPart'].DatumPlaneByPrincipalPlane(offset=x_ori
+    	   , principalPlane=YZPLANE))
 
-for i, z_ori in enumerate(model_sbar_location_generator(model_depth, losbar_spacing)):
-    datums.append(mdl.parts['concslabPart'].DatumPlaneByPrincipalPlane(offset=z_ori - offset
-	   , principalPlane=XYPLANE))
-    datums.append(mdl.parts['concslabPart'].DatumPlaneByPrincipalPlane(offset=z_ori + offset
-	   , principalPlane=XYPLANE))
-    datums.append(mdl.parts['concslabPart'].DatumPlaneByPrincipalPlane(offset=z_ori
-	   , principalPlane=XYPLANE))
+    for i, z_ori in enumerate(model_sbar_location_generator(model_depth, losbar_spacing)):
+        datums.append(mdl.parts['concslabPart'].DatumPlaneByPrincipalPlane(offset=z_ori - offset
+    	   , principalPlane=XYPLANE))
+        datums.append(mdl.parts['concslabPart'].DatumPlaneByPrincipalPlane(offset=z_ori + offset
+    	   , principalPlane=XYPLANE))
+        datums.append(mdl.parts['concslabPart'].DatumPlaneByPrincipalPlane(offset=z_ori
+    	   , principalPlane=XYPLANE))
 
 
-#########################################################
-# partition directly next to hole
-# for i, x_ori in enumerate(model_sbar_location_generator(model_width, trsbar_spacing)):
-#     datums.append(mdl.parts['concslabPart'].DatumPlaneByPrincipalPlane(offset=x_ori
-# 	   , principalPlane=YZPLANE))
-    # datums.append(mdl.parts['concslabPart'].DatumPlaneByPrincipalPlane(offset=x_ori + trsbar_diameter/2
-	#    , principalPlane=YZPLANE))
-#########################################################
-print('> Partitioning by datum plane')
-# convert fetaures to datum item
-datums = [mdl.parts['concslabPart'].datums[d.id] for d in datums]
-for d in datums:
-	mdl.parts['concslabPart'].PartitionCellByDatumPlane(cells=
-		mdl.parts['concslabPart'].cells.getByBoundingBox(
-        yMin=rebar_height - offset, yMax=rebar_height + offset), datumPlane=d)
+    #########################################################
+    # partition directly next to hole
+    # for i, x_ori in enumerate(model_sbar_location_generator(model_width, trsbar_spacing)):
+    #     datums.append(mdl.parts['concslabPart'].DatumPlaneByPrincipalPlane(offset=x_ori
+    # 	   , principalPlane=YZPLANE))
+        # datums.append(mdl.parts['concslabPart'].DatumPlaneByPrincipalPlane(offset=x_ori + trsbar_diameter/2
+    	#    , principalPlane=YZPLANE))
+    #########################################################
+    print('> Partitioning by datum plane')
+    # convert fetaures to datum item
+    datums = [mdl.parts['concslabPart'].datums[d.id] for d in datums]
+    for d in datums:
+    	mdl.parts['concslabPart'].PartitionCellByDatumPlane(cells=
+    		mdl.parts['concslabPart'].cells.getByBoundingBox(
+            yMin=rebar_y - offset, yMax=rebar_y + offset), datumPlane=d)
 
 
 

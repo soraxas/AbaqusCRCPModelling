@@ -132,7 +132,7 @@ def templatePlot(instance, height, atX=None, atZ=None):
 # # surface
 # templatePlotEntireWidth('concslab', model_height)
 # # rebar location
-# templatePlotEntireWidth('concslab', rebar_height)
+# templatePlotEntireWidth('concslab', rebar_heights)
 # # bottom
 # templatePlotEntireWidth('concslab', 0)
 
@@ -145,7 +145,7 @@ def templatePlot(instance, height, atX=None, atZ=None):
 # in line with steelbar
 for i in range(int(model_height/mesh_size) + 1):
     templatePlot(CONCSLAB_NAME, i*mesh_size, atZ=990.6)
-templatePlot(SBAR_NAME, rebar_height, atZ=990.6)
+templatePlot(SBAR_NAME, rebar_heights, atZ=990.6)
 # in between 2 steelbar
 for i in range(int(model_height/mesh_size) + 1):
     templatePlot(CONCSLAB_NAME, i*mesh_size, atZ=838.2 + (990.6-838.2)/2)
@@ -160,7 +160,7 @@ for i in range(int(model_height/mesh_size) + 1):
 # in line with steelbar
 for i in range(int(model_height/mesh_size) + 1):
     templatePlot(CONCSLAB_NAME, i*mesh_size, atX=457.2)
-templatePlot(SBAR_NAME, rebar_height, atX=457.2)
+templatePlot(SBAR_NAME, rebar_heights, atX=457.2)
 # in between 2 steelbar
 for i in range(int(model_height/mesh_size) + 1):
     templatePlot(CONCSLAB_NAME, i*mesh_size, atX=457.2 + (1371.6-457.2)/2)

@@ -41,7 +41,7 @@ for i, z_ori in enumerate(model_sbar_location_generator(model_depth, losbar_spac
     sbar_surf = None
     for instance in instances:
         faces = mdl.rootAssembly.instances[instance].faces.getByBoundingBox(
-            yMin=rebar_height-losbar_diameter, yMax=rebar_height+losbar_diameter,
+            yMin=rebar_heights-losbar_diameter, yMax=rebar_heights+losbar_diameter,
             zMin=z_ori-trsbar_diameter, zMax=z_ori+trsbar_diameter,
             xMin=0, xMax=model_width
             )
@@ -83,7 +83,7 @@ for i, x_ori in enumerate(model_sbar_location_generator(model_width, trsbar_spac
     sbar_surf = None
     for instance in instances:
         faces = mdl.rootAssembly.instances[instance].faces.getByBoundingBox(
-            yMin=rebar_height-trsbar_diameter, yMax=rebar_height+trsbar_diameter,
+            yMin=rebar_heights-trsbar_diameter, yMax=rebar_heights+trsbar_diameter,
             xMin=x_ori-trsbar_diameter, xMax=x_ori+trsbar_diameter,
             zMin=0, zMax=model_depth
             )

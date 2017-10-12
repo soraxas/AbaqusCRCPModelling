@@ -1,7 +1,7 @@
 # i = 1
 # x_ori = trsbar_spacing/2 + i*trsbar_spacing
 # a = mdl.rootAssembly.instances['concslab'].faces.getByBoundingBox(
-#     yMin=rebar_height-trsbar_diameter, yMax=rebar_height+trsbar_diameter,
+#     yMin=rebar_heights-trsbar_diameter, yMax=rebar_heights+trsbar_diameter,
 #     xMin=x_ori-trsbar_diameter, xMax=x_ori+trsbar_diameter
 #     )
 
@@ -11,7 +11,7 @@
 # return
 # # x_ori = losbar_spacing/2 + i*losbar_spacing
 # # a = mdl.rootAssembly.instances['concslab'].faces.getByBoundingBox(
-# #     yMin=rebar_height-trsbar_diameter, yMax=rebar_height+trsbar_diameter,
+# #     yMin=rebar_heights-trsbar_diameter, yMax=rebar_heights+trsbar_diameter,
 # #     xMin=x_ori-trsbar_diameter, xMax=x_ori+trsbar_diameter
 # #     )
 #
