@@ -3,17 +3,21 @@
 ##################################################
 
 PARTITION_SIZE_MODIFER = 0.5
-# PARTITION_SIZE_MODIFER = 1
+PARTITION_SIZE_MODIFER = 1
 
 model_name = '2D_CRCP'
 # model_width = 1524.0
-model_width = 1828.8
-model_height = 304.8
+# model_width = 1828.8
+model_width = 3600
+model_height = 300
 rebar_location = model_height/2
 
-partition_size = 38.1 * PARTITION_SIZE_MODIFER
-mesh_size = partition_size #* 0.2
-trsbar_mesh_size = mesh_size * 0.4
+partition_size = 30 * PARTITION_SIZE_MODIFER
+mesh_size_global = partition_size #* 0.2
+# mesh related to nearby trsbar
+mesh_size_trsbar = mesh_size_global * 0.3
+mesh_size_trsbar_nearby_diagonals = mesh_size_trsbar * 1.4
+mesh_size_trsbar_nearby_outer_edges = mesh_size_trsbar * 1.8
 
 # rebar_heights = [model_height * 2/8, model_height * 6/8]
 rebar_heights = [model_height * 1/2]
@@ -22,7 +26,7 @@ losbar_diameter = 19.05
 trsbar_diameter = 15.875
 
 # losbar_spacing = 152.4
-trsbar_spacing = 914.4
+trsbar_spacing = 900
 
 TEMP_INITIAL = 48.9
 TEMP_TOPSURFACE = 29.4
@@ -443,6 +447,28 @@ mdl.Temperature(createStepName='Static-thermal',
 #         mdl.rootAssembly.sets['SurfaceSet'+str(i)])
 
 ############# Set boundary condition
+######################
+### Concslab
+######################
+concslab_left = None
+concslab_right = None
+concslab_left = array_append(concslab_left, mdl.rootAssembly.instances['concslab'].vertices.getByBoundingBox(xMin=0, xMax=0))
+concslab_right = array_append(concslab_right, mdl.rootAssembly.instances['concslab'].vertices.getByBoundingBox(xMin=model_width, xMax=model_width))
+
+mdl.rootAssembly.Set(name='ConcLeft', vertices=concslab_left)
+mdl.rootAssembly.Set(name='ConcRight', vertices=concslab_right)
+mdl.DisplacementBC(amplitude=UNSET, createStepName='Initial'
+    , distributionType=UNIFORM, fieldName='', localCsys=None, name='ConcLeft',
+    region=mdl.rootAssembly.sets['ConcLeft'], u1=SET, u2=UNSET,
+    ur3=SET)
+mdl.DisplacementBC(amplitude=UNSET, createStepName='Initial'
+    , distributionType=UNIFORM, fieldName='', localCsys=None, name='ConcRight',
+    region=mdl.rootAssembly.sets['ConcRight'], u1=SET, u2=UNSET,
+    ur3=SET)
+
+######################
+### Steel Bar
+######################
 sbar_left = None
 sbar_right = None
 for rebar_y in rebar_heights:
@@ -617,21 +643,57 @@ all_instances = [mdl.rootAssembly.instances[i] for i in mdl.rootAssembly.instanc
 all_instances = tuple(all_instances)
 
 for i in mdl.rootAssembly.instances.keys():
-    _instance_mesh_size = mesh_size
+    _instance_mesh_size = mesh_size_global
     if 'trsbar' in i:
-        _instance_mesh_size = trsbar_mesh_size
+        _instance_mesh_size = mesh_size_trsbar
     mdl.rootAssembly.seedPartInstance(deviationFactor=0.1,
         minSizeFactor=0.1, regions=(mdl.rootAssembly.instances[i],), size=_instance_mesh_size)
 
-# seed the parameter of the trsbar
 for rebar_y in rebar_heights:
     for x in model_sbar_location_generator(model_width, trsbar_spacing):
-        concslab_trsbar_outer_edges = mdl.rootAssembly.instances['concslab'].edges.getByBoundingBox(xMin=x-trsbar_diameter/2,
+        ########################################################################
+        #### seed the innear diagonals nearby of trsbar
+        ########################################################################
+        _edges = mdl.rootAssembly.instances['concslab'].edges.getByBoundingBox(xMin=x-partition_size,
+                                                                          xMax=x+partition_size,
+                                                                          yMin=rebar_y-partition_size,
+                                                                          yMax=rebar_y+partition_size)
+        mdl.rootAssembly.seedEdgeBySize(constraint=FINER,
+            deviationFactor=0.1, edges=_edges, minSizeFactor=0.1, size=mesh_size_trsbar_nearby_diagonals)
+        ########################################################################
+        #### seed the outer edge nearby of trsbar
+        ########################################################################
+        # Left
+        _edges = mdl.rootAssembly.instances['concslab'].edges.getByBoundingBox(xMin=x-partition_size,
+                                                                          xMax=x-partition_size,
+                                                                          yMin=rebar_y-partition_size,
+                                                                          yMax=rebar_y+partition_size)
+        # Right
+        _edges += mdl.rootAssembly.instances['concslab'].edges.getByBoundingBox(xMin=x+partition_size,
+                                                                          xMax=x+partition_size,
+                                                                          yMin=rebar_y-partition_size,
+                                                                          yMax=rebar_y+partition_size)
+        # Up
+        _edges += mdl.rootAssembly.instances['concslab'].edges.getByBoundingBox(xMin=x-partition_size,
+                                                                          xMax=x+partition_size,
+                                                                          yMin=rebar_y+partition_size,
+                                                                          yMax=rebar_y+partition_size)
+        # Down
+        _edges += mdl.rootAssembly.instances['concslab'].edges.getByBoundingBox(xMin=x-partition_size,
+                                                                          xMax=x+partition_size,
+                                                                          yMin=rebar_y-partition_size,
+                                                                          yMax=rebar_y-partition_size)
+        mdl.rootAssembly.seedEdgeBySize(constraint=FINER,
+            deviationFactor=0.1, edges=_edges, minSizeFactor=0.1, size=mesh_size_trsbar_nearby_outer_edges)
+        ########################################################################
+        #### seed the parameter of the trsbar
+        ########################################################################
+        _edges = mdl.rootAssembly.instances['concslab'].edges.getByBoundingBox(xMin=x-trsbar_diameter/2,
                                                                           xMax=x+trsbar_diameter/2,
                                                                           yMin=rebar_y-trsbar_diameter/2,
                                                                           yMax=rebar_y+trsbar_diameter/2)
         mdl.rootAssembly.seedEdgeBySize(constraint=FINER,
-            deviationFactor=0.1, edges=concslab_trsbar_outer_edges, minSizeFactor=0.1, size=trsbar_mesh_size)
+            deviationFactor=0.1, edges=_edges, minSizeFactor=0.1, size=mesh_size_trsbar)
 
 mdl.rootAssembly.setMeshControls(elemShape=QUAD, technique=STRUCTURED,
     regions=mdl.rootAssembly.instances['concslab'].faces)

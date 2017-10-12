@@ -57,7 +57,7 @@ def getNodesFromBox(instancename, yMin=None, yMax=None):
 #     except IndexError:
 #         pass
 #     return idx
-
+#
 # def templatePlotEntireWidth2(instanceName, height):
 #     pathName = instanceName+'@'+str(height)
 #     expr = []
@@ -70,7 +70,7 @@ def getNodesFromBox(instancename, yMin=None, yMax=None):
 #     ## plot XY DATA
 #     newXYData=session.XYDataFromPath(name=pathName,path=newPath,
 #                                      includeIntersections=FALSE,
-#                                      shape=DEFORMED,
+#                                      shape=UNDEFORMED,
 #                                      labelType=TRUE_DISTANCE)
 def templatePlotEntireWidth(instance, height):
     instanceName, expr = getNodesFromBox(instance, yMin=height,yMax=height)
@@ -97,7 +97,7 @@ def templatePlotEntireWidth(instance, height):
     ## plot XY DATA
     newXYData=session.XYDataFromPath(name=pathName,path=newPath,
                                      includeIntersections=FALSE,
-                                     shape=DEFORMED,
+                                     shape=UNDEFORMED,
                                      labelType=TRUE_DISTANCE)
 
 def main():
@@ -108,8 +108,8 @@ def main():
     for i in range(int(model_height/partition_size) + 1):
         templatePlotEntireWidth(CONCSLAB_NAME, i*partition_size)
 
-    # ## plot sbar
-    # for rebar_y in rebar_heights:
-    #     templatePlotEntireWidth(losbar(rebar_y), rebar_y)
+    ## plot sbar
+    for rebar_y in rebar_heights:
+        templatePlotEntireWidth(losbar(rebar_y), rebar_y)
 
 main()
