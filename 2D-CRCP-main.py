@@ -9,6 +9,7 @@ model_name = '2D_CRCP'
 # model_width = 1524.0
 # model_width = 1828.8
 model_width = 3600
+model_width = 1800
 model_height = 300
 rebar_location = model_height/2
 
@@ -27,11 +28,25 @@ trsbar_diameter = 15.875
 
 # losbar_spacing = 152.4
 trsbar_spacing = 900
+############################################
+## TEMPERATURE
+TEMP_INITIAL = '-2e-4*pow(Y,2) + 6.44e-2*pow(Y,1) + 37.72'
 
-TEMP_INITIAL = 48.9
-TEMP_TOPSURFACE = 29.4
-TEMP_BOTSURFACE = 37.8
+temp_0130 = ' 3e-9*pow(Y,4) - 2e-6*pow(Y,3) +   4e-4*pow(Y,2) -   2.9e-3*pow(Y,1) + 31.384'
+temp_0430 = '-1e-9*pow(Y,4) + 6e-7*pow(Y,3) -   1e-4*pow(Y,2) +  3.05e-2*pow(Y,1) + 29.299'
+temp_0730 = ' 2e-9*pow(Y,4) - 1e-6*pow(Y,3) +   3e-4*pow(Y,2) -   9.5e-3*pow(Y,1) + 29.563'
+temp_1030 = ' 2e-9*pow(Y,4) - 1e-6*pow(Y,3) +   5e-4*pow(Y,2) - 7.377e-2*pow(Y,1) + 36.052'
+temp_1330 = ' 6e-9*pow(Y,4) - 4e-6*pow(Y,3) + 1.1e-3*pow(Y,2) - 1.344e-1*pow(Y,1) + 41.746'
+temp_1630 = ' 2e-9*pow(Y,4) - 2e-6*pow(Y,3) +   5e-4*pow(Y,2) -  9.36e-2*pow(Y,1) + 44.083'
+temp_1930 = '8e-10*pow(Y,4) - 2e-6*pow(Y,3) +   5e-5*pow(Y,2) -   3.3e-3*pow(Y,1) + 37.575'
+temp_2230 = ' 2e-9*pow(Y,4) - 2e-6*pow(Y,3) +   4e-4*pow(Y,2) -  2.63e-2*pow(Y,1) + 34.388'
 
+
+TEMP_ANALYSIS_STAGE = temp_0130
+
+# TEMP_INITIAL = 48.9
+# TEMP_TOPSURFACE = 29.4
+# TEMP_BOTSURFACE = 37.8
 #########################
 # for submitting job
 NUM_OF_CPUS = 4
@@ -402,18 +417,34 @@ edges=edges,
 vertices=vertices
 )
 
+temp_csys = mdl.rootAssembly.DatumCsysByThreePoints(origin=(0,model_height,0),
+                                        point1=(model_width,model_height,0),
+                                        point2=(0,0,0),
+                                        name='Temp-field-csys', coordSysType=CARTESIAN)
+temp_csys = mdl.rootAssembly.datums[temp_csys.id]
+
+# mdl.Temperature(createStepName='Initial',
+#     crossSectionDistribution=CONSTANT_THROUGH_THICKNESS, distributionType=
+#     UNIFORM, magnitudes=(TEMP_INITIAL, ), name='Initial-temp', region=TEMP_REGION)
+
+# expression = '(({1}-{0})/{2}*Y+{0})'.format(TEMP_BOTSURFACE, TEMP_TOPSURFACE, model_height)
+# mdl.ExpressionField(description=
+#     'The temperature gradient for concslab, from top surface as ', expression=
+#     expression, localCsys=None, name='Temperature Gradient of concslab')
+mdl.ExpressionField(description=
+    'Zero stress temp', expression=
+    TEMP_INITIAL, localCsys=temp_csys, name='Zero Stress Temp')
+mdl.ExpressionField(description=
+    'Afterward temp profile', expression=
+    TEMP_ANALYSIS_STAGE, localCsys=temp_csys, name='Temperature profile after exposing')
 
 mdl.Temperature(createStepName='Initial',
-    crossSectionDistribution=CONSTANT_THROUGH_THICKNESS, distributionType=
-    UNIFORM, magnitudes=(TEMP_INITIAL, ), name='Initial-temp', region=TEMP_REGION)
-
-expression = '(({1}-{0})/{2}*Y+{0})'.format(TEMP_BOTSURFACE, TEMP_TOPSURFACE, model_height)
-mdl.ExpressionField(description=
-    'The temperature gradient for concslab, from top surface as ', expression=
-    expression, localCsys=None, name='Temperature Gradient of concslab')
+    crossSectionDistribution=CONSTANT_THROUGH_THICKNESS, distributionType=FIELD
+    , field='Zero Stress Temp', magnitudes=(1, ), name='Zero-stress-temp',
+    region=TEMP_REGION)
 mdl.Temperature(createStepName='Static-thermal',
     crossSectionDistribution=CONSTANT_THROUGH_THICKNESS, distributionType=FIELD
-    , field='Temperature Gradient of concslab', magnitudes=(1, ), name='Conc-gradient-field',
+    , field='Temperature profile after exposing', magnitudes=(1, ), name='Temp-Profile',
     region=TEMP_REGION)
 
 # #### make each surfacec in y axis as node set
@@ -718,7 +749,7 @@ mdl.rootAssembly.generateMesh(regions=all_instances)
 # del mdl.materials['Concrete'].viscoelastic
 
 ##################################
-# exit()
+exit()
 import datetime
 jobname = model_name+'_@_'+datetime.datetime.now().strftime("%d%m%y_%I-%M%p")
 print('> Submitting analysis now with name "'+jobname+'"')
