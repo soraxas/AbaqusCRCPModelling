@@ -2,19 +2,21 @@
 ##### MDOEL SETTINGS
 ##################################################
 
-PARTITION_SIZE_MODIFER = 1
+PARTITION_SIZE_MODIFER = 0.5
+# PARTITION_SIZE_MODIFER = 1
 
 model_name = '2D_CRCP'
-model_width = 1524.0
+# model_width = 1524.0
+model_width = 1828.8
 model_height = 304.8
 rebar_location = model_height/2
 
 partition_size = 38.1 * PARTITION_SIZE_MODIFER
-mesh_size = partition_size * 0.2
+mesh_size = partition_size #* 0.2
 trsbar_mesh_size = mesh_size * 0.4
 
-rebar_heights = [model_height * 2/8, model_height * 6/8]
-# rebar_heights = [model_height * 1/2]
+# rebar_heights = [model_height * 2/8, model_height * 6/8]
+rebar_heights = [model_height * 1/2]
 
 losbar_diameter = 19.05
 trsbar_diameter = 15.875
@@ -186,19 +188,35 @@ for rebar_y in rebar_heights:
 #                            vector=(0.0, rebar_location, 0.0))
 ## Make instances independent
 
-### Create datum plane
-
+# ### Create datum plane
+#
+# for i in range(int(model_width/partition_size)-1):
+#     mdl.parts['concslabPart'].DatumPlaneByPrincipalPlane(offset=partition_size * (i+1)
+#         , principalPlane=YZPLANE)
+# for i in range(int(model_height/partition_size)-1):
+#     mdl.parts['concslabPart'].DatumPlaneByPrincipalPlane(offset=partition_size * (i+1)
+#         , principalPlane=XZPLANE)
+# #### Partition by datum plane
+# for k,v in mdl.parts['concslabPart'].datums.items():
+#     mdl.parts['concslabPart'].PartitionFaceByDatumPlane(faces=
+#         mdl.parts['concslabPart'].faces, datumPlane=v)
+# mdl.rootAssembly.regenerate()
+    # partition trsbar
+mdl.ConstrainedSketch(gridSpacing=1.11, name='__profile__',
+        sheetSize=44.77, transform=
+        mdl.rootAssembly.MakeSketchTransform(
+        sketchPlane=mdl.rootAssembly.instances['concslab'].faces[0],
+        sketchPlaneSide=SIDE1, sketchOrientation=RIGHT, origin=(0,0,0)))
+# partition vert and Horziontal
 for i in range(int(model_width/partition_size)-1):
-    mdl.parts['concslabPart'].DatumPlaneByPrincipalPlane(offset=partition_size * (i+1)
-        , principalPlane=YZPLANE)
+    mdl.sketches['__profile__'].Line(point1=(partition_size * (i+1), 0),
+                                     point2=(partition_size * (i+1), model_height))
 for i in range(int(model_height/partition_size)-1):
-    mdl.parts['concslabPart'].DatumPlaneByPrincipalPlane(offset=partition_size * (i+1)
-        , principalPlane=XZPLANE)
-#### Partition by datum plane
-for k,v in mdl.parts['concslabPart'].datums.items():
-    mdl.parts['concslabPart'].PartitionFaceByDatumPlane(faces=
-        mdl.parts['concslabPart'].faces, datumPlane=v)
-mdl.rootAssembly.regenerate()
+    mdl.sketches['__profile__'].Line(point1=(0,           partition_size * (i+1)),
+                                     point2=(model_width, partition_size * (i+1)))
+mdl.rootAssembly.PartitionFaceBySketch(faces=
+        mdl.rootAssembly.instances['concslab'].faces, sketch=mdl.sketches['__profile__'])
+del mdl.sketches['__profile__']
 
 ## Partioning Longitudinal and Transverse steel bar in Part
     ##Creating DatumPointBy
@@ -217,20 +235,25 @@ for rebar_y in rebar_heights:
 
     # partition trsbar
     for x in model_sbar_location_generator(model_width, trsbar_spacing):
-        mdl.ConstrainedSketch(gridSpacing=1.11, name='__profile__',
-        sheetSize=44.77, transform=
-        mdl.rootAssembly.MakeSketchTransform(
-        sketchPlane=mdl.rootAssembly.instances[trsbar(rebar_y, x)].faces[0],
-        sketchPlaneSide=SIDE1, sketchOrientation=RIGHT, origin=(0,0,0)))
-        mdl.sketches['__profile__'].Line(point1=(x - trsbar_diameter, rebar_y),
-                                         point2=(x + trsbar_diameter, rebar_y))
-        mdl.sketches['__profile__'].Line(point1=(x, rebar_y - trsbar_diameter),
-                                         point2=(x, rebar_y + trsbar_diameter))
-        mdl.sketches['__profile__'].HorizontalConstraint(
-        addUndoState=False, entity=
-        mdl.sketches['__profile__'].geometry[2])
-        mdl.rootAssembly.PartitionFaceBySketch(faces=
-        mdl.rootAssembly.instances[trsbar(rebar_y, x)].faces, sketch=mdl.sketches['__profile__'])
+        for i in [trsbar(rebar_y, x), 'concslab']:
+            mdl.ConstrainedSketch(gridSpacing=1.11, name='__profile__',
+            sheetSize=44.77, transform=
+            mdl.rootAssembly.MakeSketchTransform(
+            sketchPlane=mdl.rootAssembly.instances[i].faces[0],
+            sketchPlaneSide=SIDE1, sketchOrientation=RIGHT, origin=(0,0,0)))
+            # partition vert and Horziontal
+            mdl.sketches['__profile__'].Line(point1=(x - partition_size, rebar_y),
+                                             point2=(x + partition_size, rebar_y))
+            mdl.sketches['__profile__'].Line(point1=(x, rebar_y - partition_size),
+                                             point2=(x, rebar_y + partition_size))
+            # partition diagonal
+            mdl.sketches['__profile__'].Line(point1=(x - partition_size, rebar_y - partition_size),
+                                             point2=(x + partition_size, rebar_y + partition_size))
+            mdl.sketches['__profile__'].Line(point1=(x - partition_size, rebar_y + partition_size),
+                                             point2=(x + partition_size, rebar_y - partition_size))
+            mdl.rootAssembly.PartitionFaceBySketch(faces=
+                    mdl.rootAssembly.instances[i].faces, sketch=mdl.sketches['__profile__'])
+            del mdl.sketches['__profile__']
 
 
 ## Define Connector behavior
