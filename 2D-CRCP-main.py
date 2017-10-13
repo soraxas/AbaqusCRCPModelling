@@ -3,13 +3,13 @@
 ##################################################
 
 PARTITION_SIZE_MODIFER = 0.5
-PARTITION_SIZE_MODIFER = 1
+# PARTITION_SIZE_MODIFER = 1
 
 model_name = '2D_CRCP'
 # model_width = 1524.0
 # model_width = 1828.8
 model_width = 3600
-model_width = 1800
+# model_width = 1800
 model_height = 300
 rebar_location = model_height/2
 
@@ -481,13 +481,14 @@ mdl.Temperature(createStepName='Static-thermal',
 ######################
 ### Concslab
 ######################
-concslab_left = None
-concslab_right = None
-concslab_left = array_append(concslab_left, mdl.rootAssembly.instances['concslab'].vertices.getByBoundingBox(xMin=0, xMax=0))
-concslab_right = array_append(concslab_right, mdl.rootAssembly.instances['concslab'].vertices.getByBoundingBox(xMin=model_width, xMax=model_width))
+concslab_left_vertices = mdl.rootAssembly.instances['concslab'].vertices.getByBoundingBox(xMin=0, xMax=0)
+concslab_left_edges    = mdl.rootAssembly.instances['concslab'].edges.getByBoundingBox(xMin=0, xMax=0)
 
-mdl.rootAssembly.Set(name='ConcLeft', vertices=concslab_left)
-mdl.rootAssembly.Set(name='ConcRight', vertices=concslab_right)
+concslab_right_vertices = mdl.rootAssembly.instances['concslab'].vertices.getByBoundingBox(xMin=model_width, xMax=model_width)
+concslab_right_edges    = mdl.rootAssembly.instances['concslab'].edges.getByBoundingBox(xMin=model_width, xMax=model_width)
+
+mdl.rootAssembly.Set(name='ConcLeft', vertices=concslab_left_vertices, edges=concslab_left_edges)
+mdl.rootAssembly.Set(name='ConcRight', vertices=concslab_right_vertices, edges=concslab_right_edges)
 mdl.DisplacementBC(amplitude=UNSET, createStepName='Initial'
     , distributionType=UNIFORM, fieldName='', localCsys=None, name='ConcLeft',
     region=mdl.rootAssembly.sets['ConcLeft'], u1=SET, u2=UNSET,
