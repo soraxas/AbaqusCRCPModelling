@@ -750,7 +750,7 @@ mdl.rootAssembly.generateMesh(regions=all_instances)
 # del mdl.materials['Concrete'].viscoelastic
 
 ##################################
-exit()
+# exit()
 import datetime
 jobname = model_name+'_@_'+datetime.datetime.now().strftime("%d%m%y_%I-%M%p")
 print('> Submitting analysis now with name "'+jobname+'"')
