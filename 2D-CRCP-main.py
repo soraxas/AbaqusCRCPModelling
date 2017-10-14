@@ -9,7 +9,7 @@ model_name = '2D_CRCP'
 # model_width = 1524.0
 # model_width = 1828.8
 model_width = 3600
-# model_width = 1800
+model_width = 1800
 model_height = 300
 rebar_location = model_height/2
 
@@ -32,17 +32,120 @@ trsbar_spacing = 900
 ## TEMPERATURE
 TEMP_INITIAL = '-2e-4*pow(Y,2) + 6.44e-2*pow(Y,1) + 37.72'
 
-temp_0130 = ' 3e-9*pow(Y,4) - 2e-6*pow(Y,3) +   4e-4*pow(Y,2) -   2.9e-3*pow(Y,1) + 31.384'
-temp_0430 = '-1e-9*pow(Y,4) + 6e-7*pow(Y,3) -   1e-4*pow(Y,2) +  3.05e-2*pow(Y,1) + 29.299'
-temp_0730 = ' 2e-9*pow(Y,4) - 1e-6*pow(Y,3) +   3e-4*pow(Y,2) -   9.5e-3*pow(Y,1) + 29.563'
-temp_1030 = ' 2e-9*pow(Y,4) - 1e-6*pow(Y,3) +   5e-4*pow(Y,2) - 7.377e-2*pow(Y,1) + 36.052'
-temp_1330 = ' 6e-9*pow(Y,4) - 4e-6*pow(Y,3) + 1.1e-3*pow(Y,2) - 1.344e-1*pow(Y,1) + 41.746'
-temp_1630 = ' 2e-9*pow(Y,4) - 2e-6*pow(Y,3) +   5e-4*pow(Y,2) -  9.36e-2*pow(Y,1) + 44.083'
-temp_1930 = '8e-10*pow(Y,4) - 2e-6*pow(Y,3) +   5e-5*pow(Y,2) -   3.3e-3*pow(Y,1) + 37.575'
-temp_2230 = ' 2e-9*pow(Y,4) - 2e-6*pow(Y,3) +   4e-4*pow(Y,2) -  2.63e-2*pow(Y,1) + 34.388'
+# temp_0130 = ' 3e-9*pow(Y,4) - 2e-6*pow(Y,3) +   4e-4*pow(Y,2) -   2.9e-3*pow(Y,1) + 31.384'
+# temp_0430 = '-1e-9*pow(Y,4) + 6e-7*pow(Y,3) -   1e-4*pow(Y,2) +  3.05e-2*pow(Y,1) + 29.299'
+# temp_0730 = ' 2e-9*pow(Y,4) - 1e-6*pow(Y,3) +   3e-4*pow(Y,2) -   9.5e-3*pow(Y,1) + 29.563'
+# temp_1030 = ' 2e-9*pow(Y,4) - 1e-6*pow(Y,3) +   5e-4*pow(Y,2) - 7.377e-2*pow(Y,1) + 36.052'
+# temp_1330 = ' 6e-9*pow(Y,4) - 4e-6*pow(Y,3) + 1.1e-3*pow(Y,2) - 1.344e-1*pow(Y,1) + 41.746'
+# temp_1630 = ' 2e-9*pow(Y,4) - 2e-6*pow(Y,3) +   5e-4*pow(Y,2) -  9.36e-2*pow(Y,1) + 44.083'
+# temp_1930 = '8e-10*pow(Y,4) - 2e-6*pow(Y,3) +   5e-5*pow(Y,2) -   3.3e-3*pow(Y,1) + 37.575'
+# temp_2230 = ' 2e-9*pow(Y,4) - 2e-6*pow(Y,3) +   4e-4*pow(Y,2) -  2.63e-2*pow(Y,1) + 34.388'
 
+temp_0730 = '1.65e-9*pow(Y,4)-1.27e-6*pow(Y,3)+2.92e-4*pow(Y,2)-9.46e-3*pow(Y,1)+29.5'
+temp_1630 = '1.86e-9*pow(Y,4)-1.51e-6*pow(Y,3)+4.63e-4*pow(Y,2)-9.36e-2*pow(Y,1)+44.1'
 
-TEMP_ANALYSIS_STAGE = temp_0130
+conc_elastic_modulus_before_crack = 14800
+conc_elastic_modulus_after_crack  = 23000
+CONC_ELASTIC_MODULUS = conc_elastic_modulus_before_crack
+
+shrinkage_as_temp_0730_before_crack = [
+    (0,     23.80555556),
+    (15,    26.0718195 ),
+    (30,    26.25201872),
+    (45,    26.3626095 ),
+    (60,    26.53663622),
+    (75,    26.755398  ),
+    (90,    27.00219872),
+    (105,   27.262347  ),
+    (120,   27.52315622),
+    (135,   27.7739445 ),
+    (150,   28.00603472),
+    (165,   28.2127545 ),
+    (180,   28.38943622),
+    (195,   28.533417  ),
+    (210,   28.64403872),
+    (225,   28.722648  ),
+    (240,   28.77259622),
+    (255,   28.7992395 ),
+    (270,   28.80993872),
+    (285,   28.8140595 ),
+    (300,   28.82297222)
+    ]
+
+shrinkage_as_temp_1630_before_crack = [
+    (0	,   38.40555556),
+    (15	,   39.44739513),
+    (30	,   38.47540882),
+    (45	,   37.50157563),
+    (60	,   36.65471782),
+    (75	,   35.91216753),
+    (90	,   35.25351682),
+    (105,   34.66061763),
+    (120,   34.11758182),
+    (135,   33.61078113),
+    (150,   33.12884722),
+    (165,   32.66267163),
+    (180,   32.20540582),
+    (195,   31.75246113),
+    (210,   31.30150882),
+    (225,   30.85248003),
+    (240,   30.40756582),
+    (255,   29.97121713),
+    (270,   29.55014482),
+    (285,   29.15331963),
+    (300,   28.79197222)
+    ]
+
+shrinkage_as_temp_0730_after_crack = [
+    (0	,   16.02888889),
+    (15	,   21.99973617),
+    (30	,   23.78993539),
+    (45	,   24.47052617),
+    (60	,   24.64455289),
+    (75	,   24.86331467),
+    (90	,   25.11011539),
+    (105,	25.37026367),
+    (120,	25.63107289),
+    (135,	25.88186117),
+    (150,	26.11395139),
+    (165,	26.32067117),
+    (180,	26.49735289),
+    (195,	26.64133367),
+    (210,	26.75195539),
+    (225,	26.83056467),
+    (240,	26.88051289),
+    (255,	26.90715617),
+    (270,	26.91785539),
+    (285,	26.92197617),
+    (300,	26.93088889)
+    ]
+
+shrinkage_as_temp_1630_after_crack = [
+    (0  ,   30.62888889),
+    (15 ,   35.3753118),
+    (30 ,   36.01332549),
+    (45 ,   35.6094923),
+    (60 ,   34.76263449),
+    (75 ,   34.0200842),
+    (90 ,   33.36143349),
+    (105,	32.7685343),
+    (120,	32.22549849),
+    (135,	31.7186978),
+    (150,	31.23676389),
+    (165,	30.7705883),
+    (180,	30.31332249),
+    (195,	29.8603778),
+    (210,	29.40942549),
+    (225,	28.9603967),
+    (240,	28.51548249),
+    (255,	28.0791338),
+    (270,	27.65806149),
+    (285,	27.2612363),
+    (300,	26.89988889),
+    ]
+
+TEMP_ANALYSIS_STAGE = temp_0730
+SHRINKAGE_ANALYSIS_STAGE = shrinkage_as_temp_0730_before_crack
 
 # TEMP_INITIAL = 48.9
 # TEMP_TOPSURFACE = 29.4
@@ -179,8 +282,9 @@ for rebar_y in rebar_heights:
 #####################################################
 # Concrete
 mdl.Material(name='Concrete')
-mdl.materials['Concrete'].Elastic(table=((13780.0, 0.15), ))
-mdl.materials['Concrete'].Expansion(table=((1.08e-05, ), ))
+mdl.materials['Concrete'].Elastic(table=((CONC_ELASTIC_MODULUS, 0.15), ))
+mdl.materials['Concrete'].Expansion(table=((7.2e-6, ), ))
+mdl.materials['Concrete'].Density(table=((2.4e-06, ), ))
 mdl.materials['Concrete'].Viscoelastic(domain=TIME, table=((
     0.45, 0.45, 48.0), ), time=PRONY)
 # Steel
@@ -476,6 +580,18 @@ mdl.Temperature(createStepName='Static-thermal',
 #         crossSectionDistribution=CONSTANT_THROUGH_THICKNESS, distributionType=
 #         UNIFORM, magnitudes=(29.4+i*T, ), name='TempLvl_'+str(i), region=
 #         mdl.rootAssembly.sets['SurfaceSet'+str(i)])
+
+##################################################################3
+### Shrinkage Stage
+##################################################################3
+mdl.StaticStep(name='Static-Shrinkage', previous='Static-thermal')
+mdl.steps['Static-Shrinkage'].setValues(
+    timeIncrementationMethod=AUTOMATIC, timePeriod=1.0)
+for i in range(int(model_height/partition_size)+1):
+    mdl.Temperature(createStepName='Static-Shrinkage',
+        crossSectionDistribution=CONSTANT_THROUGH_THICKNESS, distributionType=
+        UNIFORM, magnitudes=(SHRINKAGE_ANALYSIS_STAGE[len(SHRINKAGE_ANALYSIS_STAGE)-1-i][1], ), name='ShrinkageLvl_'+str(i), region=
+        (mdl.rootAssembly.instances['concslab'].vertices.getByBoundingBox(yMin=i*partition_size, yMax=i*partition_size),))
 
 ############# Set boundary condition
 ######################
